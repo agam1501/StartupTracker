@@ -14,7 +14,10 @@ class FundingRound(Base, TimestampMixin):
 
     id: Mapped[uuid.UUID] = pk_uuid()
     company_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     round_type: Mapped[str] = mapped_column(Text, nullable=False)
     amount_usd: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
