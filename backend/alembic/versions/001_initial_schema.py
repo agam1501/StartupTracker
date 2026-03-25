@@ -4,6 +4,7 @@ Revision ID: 001
 Revises:
 Create Date: 2026-03-24
 """
+
 from collections.abc import Sequence
 
 import sqlalchemy as sa
@@ -37,9 +38,7 @@ def upgrade() -> None:
         sa.Column("website", sa.Text(), nullable=True),
         sa.Column("created_at", **_created_at),
     )
-    op.create_index(
-        "ix_companies_normalized_name", "companies", ["normalized_name"]
-    )
+    op.create_index("ix_companies_normalized_name", "companies", ["normalized_name"])
 
     op.create_table(
         "investors",
@@ -47,9 +46,7 @@ def upgrade() -> None:
         sa.Column("name", sa.Text(), nullable=False),
         sa.Column("normalized_name", sa.Text(), nullable=False),
     )
-    op.create_index(
-        "ix_investors_normalized_name", "investors", ["normalized_name"]
-    )
+    op.create_index("ix_investors_normalized_name", "investors", ["normalized_name"])
 
     op.create_table(
         "funding_rounds",
@@ -67,9 +64,7 @@ def upgrade() -> None:
         sa.Column("source_url", sa.Text(), nullable=True),
         sa.Column("created_at", **_created_at),
     )
-    op.create_index(
-        "ix_funding_rounds_company_id", "funding_rounds", ["company_id"]
-    )
+    op.create_index("ix_funding_rounds_company_id", "funding_rounds", ["company_id"])
 
     op.create_table(
         "round_investors",
