@@ -13,6 +13,7 @@ class FundingRoundBase(BaseModel):
     valuation_usd: Decimal | None = None
     announced_date: date | None = None
     source_url: str | None = None
+    confidence_score: float | None = None
 
 
 class FundingRoundCreate(FundingRoundBase):
