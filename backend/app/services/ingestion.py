@@ -19,6 +19,7 @@ from app.services.dedup import (
     is_duplicate_round,
 )
 from app.services.fetcher import fetch_article_text, parse_rss_feed
+from app.services.link_discovery import discover_links
 from app.services.llm import extract_article
 from app.services.normalization import (
     validate_acquisition_extraction,
@@ -186,6 +187,30 @@ async def ingest_rss_feed(
 ) -> list[dict]:
     """Parse an RSS feed and ingest all new articles."""
     entries = await parse_rss_feed(feed_url)
+    results = []
+
+    for entry in entries:
+        url = entry["url"]
+        title = entry.get("title")
+
+        # Skip already-processed URLs
+        existing = await get_raw_source_by_url(session, url)
+        if existing and existing.processed:
+            results.append({"url": url, "status": "already_processed"})
+            continue
+
+        result = await ingest_url(session, url, title=title)
+        results.append(result)
+
+    return results
+
+
+async def ingest_webpage_source(
+    session: AsyncSession,
+    page_url: str,
+) -> list[dict]:
+    """Discover links from a webpage and ingest new articles."""
+    entries = await discover_links(page_url)
     results = []
 
     for entry in entries:
