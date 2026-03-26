@@ -8,6 +8,7 @@ import type {
   FundingBySector,
   FundingRound,
   Investor,
+  InvestorDetail,
   PaginatedResponse,
   RoundTypeDistribution,
   SectorSummary,
@@ -80,6 +81,10 @@ export async function getInvestors(params?: {
   page_size?: number;
 }): Promise<PaginatedResponse<Investor>> {
   return fetchApi(`/investors${buildQuery(params || {})}`);
+}
+
+export async function getInvestor(id: string): Promise<InvestorDetail> {
+  return fetchApi(`/investors/${id}`);
 }
 
 // Acquisitions
