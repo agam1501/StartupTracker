@@ -1,5 +1,6 @@
 import re
 import uuid
+from datetime import UTC
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,6 +10,7 @@ from app.models.acquisition import Acquisition
 from app.models.company import Company
 from app.models.funding_round import FundingRound
 from app.models.investor import Investor
+from app.models.monitored_source import MonitoredSource
 from app.models.raw_source import RawSource
 from app.models.round_investor import round_investors
 
@@ -397,3 +399,106 @@ async def get_stats(session: AsyncSession) -> dict:
         "total_investors": total_investors,
         "total_funding_usd": float(total_funding),
     }
+
+
+# ---------------------------------------------------------------------------
+# Monitored sources
+# ---------------------------------------------------------------------------
+
+
+async def create_monitored_source(
+    session: AsyncSession,
+    *,
+    name: str,
+    url: str,
+    source_type: str,
+    investor_id: uuid.UUID | None = None,
+    active: bool = True,
+) -> MonitoredSource:
+    ms = MonitoredSource(
+        name=name,
+        url=url,
+        source_type=source_type,
+        investor_id=investor_id,
+        active=active,
+    )
+    session.add(ms)
+    await session.flush()
+    return ms
+
+
+async def get_monitored_source(
+    session: AsyncSession,
+    source_id: uuid.UUID,
+) -> MonitoredSource | None:
+    stmt = select(MonitoredSource).where(MonitoredSource.id == source_id)
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def list_monitored_sources(
+    session: AsyncSession,
+    *,
+    source_type: str | None = None,
+    active: bool | None = None,
+    page: int = 1,
+    page_size: int = 50,
+) -> tuple[list[MonitoredSource], int]:
+    base = select(MonitoredSource)
+    count_base = select(func.count()).select_from(MonitoredSource)
+
+    if source_type:
+        base = base.where(MonitoredSource.source_type == source_type)
+        count_base = count_base.where(MonitoredSource.source_type == source_type)
+    if active is not None:
+        base = base.where(MonitoredSource.active.is_(active))
+        count_base = count_base.where(MonitoredSource.active.is_(active))
+
+    total = (await session.execute(count_base)).scalar_one()
+
+    stmt = base.order_by(MonitoredSource.name).offset((page - 1) * page_size).limit(page_size)
+    rows = (await session.execute(stmt)).scalars().all()
+    return list(rows), total
+
+
+async def update_monitored_source(
+    session: AsyncSession,
+    source_id: uuid.UUID,
+    **kwargs,
+) -> MonitoredSource | None:
+    stmt = select(MonitoredSource).where(MonitoredSource.id == source_id)
+    result = await session.execute(stmt)
+    ms = result.scalar_one_or_none()
+    if not ms:
+        return None
+    for key, value in kwargs.items():
+        if hasattr(ms, key):
+            setattr(ms, key, value)
+    await session.flush()
+    return ms
+
+
+async def get_active_sources(
+    session: AsyncSession,
+    source_type: str | None = None,
+) -> list[MonitoredSource]:
+    stmt = select(MonitoredSource).where(MonitoredSource.active.is_(True))
+    if source_type:
+        stmt = stmt.where(MonitoredSource.source_type == source_type)
+    stmt = stmt.order_by(MonitoredSource.name)
+    rows = (await session.execute(stmt)).scalars().all()
+    return list(rows)
+
+
+async def mark_source_checked(
+    session: AsyncSession,
+    source_id: uuid.UUID,
+) -> None:
+    from datetime import datetime
+
+    stmt = select(MonitoredSource).where(MonitoredSource.id == source_id)
+    result = await session.execute(stmt)
+    ms = result.scalar_one_or_none()
+    if ms:
+        ms.last_checked_at = datetime.now(UTC)
+        await session.flush()
