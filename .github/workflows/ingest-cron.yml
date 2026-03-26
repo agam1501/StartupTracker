@@ -1,0 +1,27 @@
+name: Scheduled Ingestion
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger batch ingestion
+        run: |
+          if [ -z "$API_URL" ] || [ -z "$FEED_URLS" ]; then
+            echo "API_URL or FEED_URLS not configured, skipping"
+            exit 0
+          fi
+          IFS=',' read -ra FEEDS <<< "$FEED_URLS"
+          for feed in "${FEEDS[@]}"; do
+            echo "Ingesting feed: $feed"
+            curl -sf -X POST "$API_URL/ingest/batch" \
+              -H "Content-Type: application/json" \
+              -d "{\"feed_url\": \"$feed\"}" || echo "Failed: $feed"
+          done
+        env:
+          API_URL: ${{ secrets.API_URL }}
+          FEED_URLS: ${{ secrets.FEED_URLS }}
