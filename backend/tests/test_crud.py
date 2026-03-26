@@ -76,6 +76,37 @@ class TestCompanyCrud:
         assert len(page3) == 1
 
     @pytest.mark.asyncio
+    async def test_create_with_sector(self, session):
+        c = await create_company(session, "AI Startup", sector="AI/ML")
+        await session.flush()
+
+        fetched = await get_company(session, c.id)
+        assert fetched is not None
+        assert fetched.sector == "AI/ML"
+
+    @pytest.mark.asyncio
+    async def test_list_filter_by_sector(self, session):
+        await create_company(session, "AI Co", sector="AI/ML")
+        await create_company(session, "Fin Co", sector="Fintech")
+        await create_company(session, "AI Co 2", sector="AI/ML")
+        await session.commit()
+
+        results, total = await list_companies(session, sector="AI/ML")
+        assert total == 2
+        assert all(c.sector == "AI/ML" for c in results)
+
+    @pytest.mark.asyncio
+    async def test_list_sector_with_search(self, session):
+        await create_company(session, "Alpha AI", sector="AI/ML")
+        await create_company(session, "Alpha Fin", sector="Fintech")
+        await create_company(session, "Beta AI", sector="AI/ML")
+        await session.commit()
+
+        results, total = await list_companies(session, search="alpha", sector="AI/ML")
+        assert total == 1
+        assert results[0].name == "Alpha AI"
+
+    @pytest.mark.asyncio
     async def test_get_nonexistent(self, session):
         import uuid
 

@@ -13,5 +13,6 @@ class Company(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(Text, nullable=False)
     normalized_name: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     website: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sector: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
 
     funding_rounds = relationship("FundingRound", back_populates="company", lazy="selectin")
