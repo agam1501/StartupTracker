@@ -5,6 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.models.acquisition import Acquisition
 from app.models.company import Company
 from app.models.funding_round import FundingRound
 from app.models.investor import Investor
@@ -264,6 +265,82 @@ async def mark_source_processed(
     if rs:
         rs.processed = True
         await session.flush()
+
+
+# ---------------------------------------------------------------------------
+# Acquisitions
+# ---------------------------------------------------------------------------
+
+
+async def create_acquisition(
+    session: AsyncSession,
+    *,
+    acquirer_id: uuid.UUID,
+    target_id: uuid.UUID,
+    amount_usd: float | None = None,
+    announced_date=None,
+    source_url: str | None = None,
+    confidence_score: float | None = None,
+) -> Acquisition:
+    acq = Acquisition(
+        acquirer_id=acquirer_id,
+        target_id=target_id,
+        amount_usd=amount_usd,
+        announced_date=announced_date,
+        source_url=source_url,
+        confidence_score=confidence_score,
+    )
+    session.add(acq)
+    await session.flush()
+    return acq
+
+
+async def get_acquisition(
+    session: AsyncSession,
+    acquisition_id: uuid.UUID,
+) -> Acquisition | None:
+    stmt = (
+        select(Acquisition)
+        .options(
+            selectinload(Acquisition.acquirer),
+            selectinload(Acquisition.target),
+        )
+        .where(Acquisition.id == acquisition_id)
+    )
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def list_acquisitions(
+    session: AsyncSession,
+    *,
+    acquirer_id: uuid.UUID | None = None,
+    target_id: uuid.UUID | None = None,
+    page: int = 1,
+    page_size: int = 20,
+) -> tuple[list[Acquisition], int]:
+    base = select(Acquisition).options(
+        selectinload(Acquisition.acquirer),
+        selectinload(Acquisition.target),
+    )
+    count_base = select(func.count()).select_from(Acquisition)
+
+    if acquirer_id:
+        base = base.where(Acquisition.acquirer_id == acquirer_id)
+        count_base = count_base.where(Acquisition.acquirer_id == acquirer_id)
+    if target_id:
+        base = base.where(Acquisition.target_id == target_id)
+        count_base = count_base.where(Acquisition.target_id == target_id)
+
+    total = (await session.execute(count_base)).scalar_one()
+
+    stmt = (
+        base.order_by(Acquisition.announced_date.desc().nullslast())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )
+    rows = (await session.execute(stmt)).scalars().unique().all()
+    return list(rows), total
 
 
 # ---------------------------------------------------------------------------
