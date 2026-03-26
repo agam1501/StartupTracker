@@ -4,8 +4,9 @@ services:
     runtime: python
     region: oregon
     plan: free
-    buildCommand: cd backend && pip install -e .
+    buildCommand: cd backend && pip install -e . && alembic upgrade head
     startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
         sync: false
@@ -13,6 +14,8 @@ services:
         sync: false
       - key: OPENAI_MODEL
         value: gpt-4o-mini
+      - key: CORS_ORIGINS
+        sync: false
       - key: PYTHON_VERSION
         value: "3.11"
 
