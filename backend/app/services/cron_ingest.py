@@ -1,4 +1,4 @@
-"""Cron entry point for batch ingestion of RSS feeds and monitored sources."""
+"""Cron entry point for batch ingestion of RSS feeds and webpage sources."""
 
 import asyncio
 import logging
@@ -6,7 +6,7 @@ import os
 
 from app.services.crud import get_active_sources, mark_source_checked
 from app.services.db import async_session
-from app.services.ingestion import ingest_rss_feed
+from app.services.ingestion import ingest_rss_feed, ingest_webpage_source
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -17,12 +17,24 @@ FEED_URLS = [u.strip() for u in os.environ.get("FEED_URLS", "").split(",") if u.
 async def main():
     async with async_session() as session:
         # DB-driven sources take priority
-        db_sources = await get_active_sources(session, source_type="rss")
+        db_sources = await get_active_sources(session)
 
         if db_sources:
             for source in db_sources:
-                logger.info("Processing DB source: %s (%s)", source.name, source.url)
-                results = await ingest_rss_feed(session, source.url)
+                logger.info(
+                    "Processing %s source: %s (%s)",
+                    source.source_type,
+                    source.name,
+                    source.url,
+                )
+                if source.source_type == "rss":
+                    results = await ingest_rss_feed(session, source.url)
+                elif source.source_type == "webpage":
+                    results = await ingest_webpage_source(session, source.url)
+                else:
+                    logger.warning("Unknown source type: %s", source.source_type)
+                    continue
+
                 for r in results:
                     logger.info("  %s -> %s", r["url"], r["status"])
                 await mark_source_checked(session, source.id)
