@@ -15,12 +15,20 @@ router = APIRouter(prefix="/companies", tags=["companies"])
 async def list_companies_endpoint(
     search: str | None = Query(None, description="Search by company name"),
     sector: str | None = Query(None, description="Filter by sector"),
+    sort_by: str = Query("name", description="Sort by: name, created_at, sector"),
+    sort_order: str = Query("asc", description="Sort order: asc or desc"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     session: AsyncSession = Depends(get_session),
 ):
     companies, total = await list_companies(
-        session, search=search, sector=sector, page=page, page_size=page_size
+        session,
+        search=search,
+        sector=sector,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        page=page,
+        page_size=page_size,
     )
     return PaginatedResponse(
         items=[CompanyResponse.model_validate(c) for c in companies],
