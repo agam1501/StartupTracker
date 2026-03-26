@@ -1,9 +1,10 @@
-"""Cron entry point for batch ingestion of RSS feeds."""
+"""Cron entry point for batch ingestion of RSS feeds and monitored sources."""
 
 import asyncio
 import logging
 import os
 
+from app.services.crud import get_active_sources, mark_source_checked
 from app.services.db import async_session
 from app.services.ingestion import ingest_rss_feed
 
@@ -14,16 +15,28 @@ FEED_URLS = [u.strip() for u in os.environ.get("FEED_URLS", "").split(",") if u.
 
 
 async def main():
-    if not FEED_URLS:
-        logger.warning("No FEED_URLS configured, nothing to ingest")
-        return
-
     async with async_session() as session:
-        for feed_url in FEED_URLS:
-            logger.info("Processing feed: %s", feed_url)
-            results = await ingest_rss_feed(session, feed_url)
-            for r in results:
-                logger.info("  %s -> %s", r["url"], r["status"])
+        # DB-driven sources take priority
+        db_sources = await get_active_sources(session, source_type="rss")
+
+        if db_sources:
+            for source in db_sources:
+                logger.info("Processing DB source: %s (%s)", source.name, source.url)
+                results = await ingest_rss_feed(session, source.url)
+                for r in results:
+                    logger.info("  %s -> %s", r["url"], r["status"])
+                await mark_source_checked(session, source.id)
+                await session.commit()
+        elif FEED_URLS:
+            # Fallback to env var
+            logger.info("No DB sources found, falling back to FEED_URLS env var")
+            for feed_url in FEED_URLS:
+                logger.info("Processing feed: %s", feed_url)
+                results = await ingest_rss_feed(session, feed_url)
+                for r in results:
+                    logger.info("  %s -> %s", r["url"], r["status"])
+        else:
+            logger.warning("No sources configured (DB or FEED_URLS), nothing to ingest")
 
 
 if __name__ == "__main__":
