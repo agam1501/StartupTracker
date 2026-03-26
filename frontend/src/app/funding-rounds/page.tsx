@@ -1,11 +1,12 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { TrendingUp } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { RoundBadge } from "@/components/ui/badge";
+import FilterBar from "@/components/FilterBar";
 import Pagination from "@/components/Pagination";
 import { getFundingRounds } from "@/lib/api";
 import { formatUSD, formatDate } from "@/lib/format";
-import { cn } from "@/lib/utils";
 
 const ROUND_TYPES = [
   "Pre-Seed",
@@ -17,12 +18,19 @@ const ROUND_TYPES = [
 ];
 
 interface PageProps {
-  searchParams: Promise<{ round_type?: string; page?: string }>;
+  searchParams: Promise<{
+    round_type?: string;
+    sort_by?: string;
+    sort_order?: string;
+    page?: string;
+  }>;
 }
 
 export default async function FundingRoundsPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const roundType = params.round_type || "";
+  const sortBy = params.sort_by || "";
+  const sortOrder = params.sort_order || "";
   const page = parseInt(params.page || "1", 10);
 
   let data;
@@ -30,6 +38,8 @@ export default async function FundingRoundsPage({ searchParams }: PageProps) {
   try {
     data = await getFundingRounds({
       round_type: roundType || undefined,
+      sort_by: sortBy || undefined,
+      sort_order: sortOrder || undefined,
       page,
       page_size: 20,
     });
@@ -46,33 +56,22 @@ export default async function FundingRoundsPage({ searchParams }: PageProps) {
         </p>
       </div>
 
-      {/* Filter pills */}
-      <div className="mb-6 flex flex-wrap gap-2">
-        <Link
-          href="/funding-rounds"
-          className={cn(
-            "rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
-            !roundType
-              ? "border-blue-600 bg-blue-50 text-blue-700"
-              : "border-gray-200 text-gray-600 hover:bg-gray-50"
-          )}
-        >
-          All
-        </Link>
-        {ROUND_TYPES.map((rt) => (
-          <Link
-            key={rt}
-            href={`/funding-rounds?round_type=${encodeURIComponent(rt)}`}
-            className={cn(
-              "rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
-              roundType === rt
-                ? "border-blue-600 bg-blue-50 text-blue-700"
-                : "border-gray-200 text-gray-600 hover:bg-gray-50"
-            )}
-          >
-            {rt}
-          </Link>
-        ))}
+      <div className="mb-6">
+        <Suspense fallback={null}>
+          <FilterBar
+            basePath="/funding-rounds"
+            pillFilter={{
+              param: "round_type",
+              options: ROUND_TYPES.map((rt) => ({ label: rt, value: rt })),
+              label: "Type",
+            }}
+            sortOptions={[
+              { label: "Date", value: "date" },
+              { label: "Amount", value: "amount" },
+              { label: "Round Type", value: "round_type" },
+            ]}
+          />
+        </Suspense>
       </div>
 
       {error ? (
@@ -169,7 +168,11 @@ export default async function FundingRoundsPage({ searchParams }: PageProps) {
               pageSize={20}
               total={data.total}
               basePath="/funding-rounds"
-              extraParams={roundType ? { round_type: roundType } : {}}
+              extraParams={{
+                ...(roundType ? { round_type: roundType } : {}),
+                ...(sortBy ? { sort_by: sortBy } : {}),
+                ...(sortOrder ? { sort_order: sortOrder } : {}),
+              }}
             />
           </div>
         </>

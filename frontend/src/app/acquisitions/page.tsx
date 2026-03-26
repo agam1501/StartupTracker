@@ -1,23 +1,36 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { Handshake } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import FilterBar from "@/components/FilterBar";
 import Pagination from "@/components/Pagination";
 import { getAcquisitions } from "@/lib/api";
 import { formatUSD, formatDate } from "@/lib/format";
 import type { Acquisition } from "@/lib/types";
 
 interface PageProps {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{
+    sort_by?: string;
+    sort_order?: string;
+    page?: string;
+  }>;
 }
 
 export default async function AcquisitionsPage({ searchParams }: PageProps) {
   const params = await searchParams;
+  const sortBy = params.sort_by || "";
+  const sortOrder = params.sort_order || "";
   const page = parseInt(params.page || "1", 10);
 
   let data;
   let error: string | null = null;
   try {
-    data = await getAcquisitions({ page, page_size: 20 });
+    data = await getAcquisitions({
+      sort_by: sortBy || undefined,
+      sort_order: sortOrder || undefined,
+      page,
+      page_size: 20,
+    });
   } catch {
     error = "Failed to load acquisitions. Is the backend running?";
   }
@@ -29,6 +42,18 @@ export default async function AcquisitionsPage({ searchParams }: PageProps) {
         <p className="text-sm text-gray-500">
           Browse tracked acquisition activity.
         </p>
+      </div>
+
+      <div className="mb-6">
+        <Suspense fallback={null}>
+          <FilterBar
+            basePath="/acquisitions"
+            sortOptions={[
+              { label: "Date", value: "date" },
+              { label: "Amount", value: "amount" },
+            ]}
+          />
+        </Suspense>
       </div>
 
       {error ? (
@@ -133,6 +158,10 @@ export default async function AcquisitionsPage({ searchParams }: PageProps) {
               pageSize={20}
               total={data.total}
               basePath="/acquisitions"
+              extraParams={{
+                ...(sortBy ? { sort_by: sortBy } : {}),
+                ...(sortOrder ? { sort_order: sortOrder } : {}),
+              }}
             />
           </div>
         </>
