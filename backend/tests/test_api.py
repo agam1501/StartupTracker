@@ -155,3 +155,89 @@ class TestIngestAPI:
         resp2 = await client.post("/ingest", json=payload)
         assert resp2.status_code == 200
         assert resp2.json()["id"] == resp1.json()["id"]
+
+
+class TestInvestorsAPI:
+    @pytest.mark.asyncio
+    async def test_list_empty(self, client):
+        resp = await client.get("/investors")
+        assert resp.status_code == 200
+        assert resp.json()["total"] == 0
+
+    @pytest.mark.asyncio
+    async def test_list_with_data(self, client, session):
+        await create_investor(session, "Sequoia Capital")
+        await create_investor(session, "Andreessen Horowitz")
+        await session.flush()
+
+        resp = await client.get("/investors")
+        assert resp.status_code == 200
+        assert resp.json()["total"] == 2
+
+    @pytest.mark.asyncio
+    async def test_search(self, client, session):
+        await create_investor(session, "Sequoia Capital")
+        await create_investor(session, "Andreessen Horowitz")
+        await session.flush()
+
+        resp = await client.get("/investors", params={"search": "sequoia"})
+        assert resp.status_code == 200
+        assert resp.json()["total"] == 1
+
+    @pytest.mark.asyncio
+    async def test_get_by_id(self, client, session):
+        inv = await create_investor(session, "Sequoia Capital")
+        await session.flush()
+
+        resp = await client.get(f"/investors/{inv.id}")
+        assert resp.status_code == 200
+        assert resp.json()["name"] == "Sequoia Capital"
+
+    @pytest.mark.asyncio
+    async def test_get_404(self, client):
+        resp = await client.get("/investors/00000000-0000-0000-0000-000000000000")
+        assert resp.status_code == 404
+
+
+class TestStatsAPI:
+    @pytest.mark.asyncio
+    async def test_empty_stats(self, client):
+        resp = await client.get("/stats")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total_companies"] == 0
+        assert data["total_rounds"] == 0
+        assert data["total_investors"] == 0
+        assert data["total_funding_usd"] == 0
+
+    @pytest.mark.asyncio
+    async def test_stats_with_data(self, client, session):
+        c = await create_company(session, "Acme Corp")
+        inv = await create_investor(session, "VC Fund")
+        await create_funding_round(
+            session,
+            company_id=c.id,
+            round_type="Seed",
+            amount_usd=1_000_000,
+            investor_ids=[inv.id],
+        )
+        await session.flush()
+
+        resp = await client.get("/stats")
+        data = resp.json()
+        assert data["total_companies"] == 1
+        assert data["total_rounds"] == 1
+        assert data["total_investors"] == 1
+        assert data["total_funding_usd"] == 1_000_000
+
+
+class TestFundingRoundCompanyName:
+    @pytest.mark.asyncio
+    async def test_company_name_in_list(self, client, session):
+        c = await create_company(session, "Acme Corp")
+        await create_funding_round(session, company_id=c.id, round_type="Seed", amount_usd=500_000)
+        await session.flush()
+
+        resp = await client.get("/funding-rounds")
+        data = resp.json()
+        assert data["items"][0]["company_name"] == "Acme Corp"

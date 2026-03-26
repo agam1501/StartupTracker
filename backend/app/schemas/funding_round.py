@@ -22,6 +22,7 @@ class FundingRoundCreate(FundingRoundBase):
 class FundingRoundResponse(FundingRoundBase):
     id: uuid.UUID
     company_id: uuid.UUID
+    company_name: str | None = None
     created_at: datetime
     investors: list[InvestorResponse] = []
 

@@ -4,6 +4,7 @@ from decimal import Decimal
 
 from sqlalchemy import Date, ForeignKey, Numeric, Text
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, pk_uuid
@@ -27,3 +28,7 @@ class FundingRound(Base, TimestampMixin):
 
     company = relationship("Company", back_populates="funding_rounds")
     investors = relationship("Investor", secondary="round_investors", lazy="selectin")
+
+    @hybrid_property
+    def company_name(self) -> str | None:
+        return self.company.name if self.company else None

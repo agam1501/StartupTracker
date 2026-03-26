@@ -133,7 +133,10 @@ async def list_funding_rounds(
     page: int = 1,
     page_size: int = 20,
 ) -> tuple[list[FundingRound], int]:
-    base = select(FundingRound).options(selectinload(FundingRound.investors))
+    base = select(FundingRound).options(
+        selectinload(FundingRound.investors),
+        selectinload(FundingRound.company),
+    )
     count_base = select(func.count()).select_from(FundingRound)
 
     if company_id:
@@ -261,3 +264,29 @@ async def mark_source_processed(
     if rs:
         rs.processed = True
         await session.flush()
+
+
+# ---------------------------------------------------------------------------
+# Stats
+# ---------------------------------------------------------------------------
+
+
+async def get_stats(session: AsyncSession) -> dict:
+    total_companies = (
+        await session.execute(select(func.count()).select_from(Company))
+    ).scalar_one()
+    total_rounds = (
+        await session.execute(select(func.count()).select_from(FundingRound))
+    ).scalar_one()
+    total_investors = (
+        await session.execute(select(func.count()).select_from(Investor))
+    ).scalar_one()
+    total_funding = (
+        await session.execute(select(func.coalesce(func.sum(FundingRound.amount_usd), 0)))
+    ).scalar_one()
+    return {
+        "total_companies": total_companies,
+        "total_rounds": total_rounds,
+        "total_investors": total_investors,
+        "total_funding_usd": float(total_funding),
+    }
