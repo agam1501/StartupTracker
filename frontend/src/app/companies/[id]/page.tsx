@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RoundBadge } from "@/components/ui/badge";
+import { SectorBadge } from "@/components/ui/sector-badge";
 import { getCompany } from "@/lib/api";
 import { formatUSD, formatDate } from "@/lib/format";
 
@@ -66,6 +67,11 @@ export default async function CompanyDetailPage({ params }: PageProps) {
               <h1 className="text-2xl font-bold text-gray-900">
                 {company.name}
               </h1>
+              {company.sector && (
+                <div className="mt-1">
+                  <SectorBadge sector={company.sector} />
+                </div>
+              )}
               {company.website && (
                 <a
                   href={company.website}
@@ -156,6 +162,20 @@ export default async function CompanyDetailPage({ params }: PageProps) {
                               {inv.name}
                             </span>
                           ))}
+                        </div>
+                      )}
+
+                      {round.confidence_score != null && (
+                        <div className="mt-2 flex items-center gap-1.5">
+                          <div className="h-1.5 w-16 rounded-full bg-gray-200">
+                            <div
+                              className="h-1.5 rounded-full bg-green-500"
+                              style={{ width: `${Math.round(round.confidence_score * 100)}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-gray-400">
+                            {Math.round(round.confidence_score * 100)}% confidence
+                          </span>
                         </div>
                       )}
 

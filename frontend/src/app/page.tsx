@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { Building2, TrendingUp, Users, DollarSign, Globe } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SectorBadge } from "@/components/ui/sector-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import SearchBar from "@/components/SearchBar";
 import Pagination from "@/components/Pagination";
@@ -100,6 +101,11 @@ function CompanyCard({ company }: { company: Company }) {
             <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
               {company.name}
             </h3>
+            {company.sector && (
+              <div className="mt-1">
+                <SectorBadge sector={company.sector} />
+              </div>
+            )}
             {company.website && (
               <p className="mt-0.5 flex items-center gap-1 text-sm text-gray-400 truncate">
                 <Globe className="h-3 w-3" />
