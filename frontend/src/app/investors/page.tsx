@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { Users } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import SearchBar from "@/components/SearchBar";
@@ -19,16 +20,25 @@ function InvestorCard({ investor }: { investor: Investor }) {
     .toUpperCase();
 
   return (
-    <Card className="transition-all hover:shadow-md hover:border-blue-200">
-      <CardContent className="flex items-center gap-4 p-5">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-sm font-bold text-white">
-          {initials}
-        </div>
-        <div className="min-w-0">
-          <h3 className="font-semibold text-gray-900">{investor.name}</h3>
-        </div>
-      </CardContent>
-    </Card>
+    <Link href={`/investors/${investor.id}`} className="group block">
+      <Card className="h-full transition-all group-hover:shadow-md group-hover:border-blue-200">
+        <CardContent className="flex items-center gap-4 p-5">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-sm font-bold text-white">
+            {initials}
+          </div>
+          <div className="min-w-0">
+            <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+              {investor.name}
+            </h3>
+            {investor.investor_type && (
+              <p className="mt-0.5 text-xs text-gray-400">
+                {investor.investor_type}
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
   );
 }
 

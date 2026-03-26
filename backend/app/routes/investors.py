@@ -4,8 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.common import PaginatedResponse
+from app.schemas.funding_round import FundingRoundResponse
 from app.schemas.investor import InvestorResponse
-from app.services.crud import get_investor, list_investors
+from app.services.crud import get_investor, get_investor_rounds, list_investors
 from app.services.db import get_session
 
 router = APIRouter(prefix="/investors", tags=["investors"])
@@ -15,7 +16,7 @@ router = APIRouter(prefix="/investors", tags=["investors"])
 async def list_investors_endpoint(
     search: str | None = Query(None, description="Search by investor name"),
     investor_type: str | None = Query(None, description="Filter by investor type"),
-    sort_by: str = Query("name", description="Sort by: name, created_at"),
+    sort_by: str = Query("name", description="Sort by: name"),
     sort_order: str = Query("asc", description="Sort order: asc or desc"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
@@ -38,7 +39,7 @@ async def list_investors_endpoint(
     )
 
 
-@router.get("/{investor_id}", response_model=InvestorResponse)
+@router.get("/{investor_id}")
 async def get_investor_endpoint(
     investor_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),
@@ -46,4 +47,11 @@ async def get_investor_endpoint(
     investor = await get_investor(session, investor_id)
     if not investor:
         raise HTTPException(status_code=404, detail="Investor not found")
-    return InvestorResponse.model_validate(investor)
+
+    rounds = await get_investor_rounds(session, investor_id)
+
+    investor_data = InvestorResponse.model_validate(investor).model_dump()
+    investor_data["funding_rounds"] = [
+        FundingRoundResponse.model_validate(r).model_dump() for r in rounds
+    ]
+    return investor_data

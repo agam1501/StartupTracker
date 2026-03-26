@@ -263,6 +263,25 @@ async def get_investor(
     return result.scalar_one_or_none()
 
 
+async def get_investor_rounds(
+    session: AsyncSession,
+    investor_id: uuid.UUID,
+) -> list[FundingRound]:
+    """Get all funding rounds an investor participated in."""
+    stmt = (
+        select(FundingRound)
+        .join(round_investors, round_investors.c.round_id == FundingRound.id)
+        .where(round_investors.c.investor_id == investor_id)
+        .options(
+            selectinload(FundingRound.investors),
+            selectinload(FundingRound.company),
+        )
+        .order_by(FundingRound.announced_date.desc().nullslast())
+    )
+    rows = (await session.execute(stmt)).scalars().unique().all()
+    return list(rows)
+
+
 async def list_investors(
     session: AsyncSession,
     *,
