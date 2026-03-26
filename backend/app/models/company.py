@@ -15,6 +15,7 @@ class Company(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(Text, nullable=False)
     normalized_name: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     website: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sector: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
     revenue_usd: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
     revenue_as_of_date: Mapped[date | None] = mapped_column(Date, nullable=True)
 
