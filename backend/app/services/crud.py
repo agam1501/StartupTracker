@@ -29,11 +29,13 @@ async def create_company(
     session: AsyncSession,
     name: str,
     website: str | None = None,
+    sector: str | None = None,
 ) -> Company:
     company = Company(
         name=name,
         normalized_name=normalize_name(name),
         website=website,
+        sector=sector,
     )
     session.add(company)
     await session.flush()
@@ -57,6 +59,7 @@ async def list_companies(
     session: AsyncSession,
     *,
     search: str | None = None,
+    sector: str | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> tuple[list[Company], int]:
@@ -67,6 +70,10 @@ async def list_companies(
         pattern = f"%{normalize_name(search)}%"
         base = base.where(Company.normalized_name.ilike(pattern))
         count_base = count_base.where(Company.normalized_name.ilike(pattern))
+
+    if sector:
+        base = base.where(Company.sector == sector)
+        count_base = count_base.where(Company.sector == sector)
 
     total = (await session.execute(count_base)).scalar_one()
 

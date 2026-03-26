@@ -76,6 +76,28 @@ class TestCompaniesAPI:
         assert "funding_rounds" in data
 
     @pytest.mark.asyncio
+    async def test_list_filter_by_sector(self, client, session):
+        await create_company(session, "AI Co", sector="AI/ML")
+        await create_company(session, "Fin Co", sector="Fintech")
+        await session.flush()
+
+        resp = await client.get("/companies", params={"sector": "AI/ML"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total"] == 1
+        assert data["items"][0]["name"] == "AI Co"
+        assert data["items"][0]["sector"] == "AI/ML"
+
+    @pytest.mark.asyncio
+    async def test_detail_includes_sector(self, client, session):
+        c = await create_company(session, "AI Co", sector="AI/ML")
+        await session.flush()
+
+        resp = await client.get(f"/companies/{c.id}")
+        assert resp.status_code == 200
+        assert resp.json()["sector"] == "AI/ML"
+
+    @pytest.mark.asyncio
     async def test_get_404(self, client):
         resp = await client.get("/companies/00000000-0000-0000-0000-000000000000")
         assert resp.status_code == 404
