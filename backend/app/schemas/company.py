@@ -1,5 +1,6 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal
 
 from pydantic import BaseModel
 
@@ -8,6 +9,8 @@ class CompanyBase(BaseModel):
     name: str
     website: str | None = None
     sector: str | None = None
+    revenue_usd: Decimal | None = None
+    revenue_as_of_date: date | None = None
 
 
 class CompanyCreate(CompanyBase):

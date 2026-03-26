@@ -12,3 +12,5 @@ class Investor(Base):
     id: Mapped[uuid.UUID] = pk_uuid()
     name: Mapped[str] = mapped_column(Text, nullable=False)
     normalized_name: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    investor_type: Mapped[str | None] = mapped_column(Text, nullable=True)
+    website: Mapped[str | None] = mapped_column(Text, nullable=True)

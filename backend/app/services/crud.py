@@ -98,6 +98,7 @@ async def create_funding_round(
     announced_date=None,
     source_url: str | None = None,
     investor_ids: list[uuid.UUID] | None = None,
+    confidence_score: float | None = None,
 ) -> FundingRound:
     fr = FundingRound(
         company_id=company_id,
@@ -106,6 +107,7 @@ async def create_funding_round(
         valuation_usd=valuation_usd,
         announced_date=announced_date,
         source_url=source_url,
+        confidence_score=confidence_score,
     )
     session.add(fr)
     await session.flush()
@@ -173,8 +175,15 @@ async def list_funding_rounds(
 async def create_investor(
     session: AsyncSession,
     name: str,
+    investor_type: str | None = None,
+    website: str | None = None,
 ) -> Investor:
-    investor = Investor(name=name, normalized_name=normalize_name(name))
+    investor = Investor(
+        name=name,
+        normalized_name=normalize_name(name),
+        investor_type=investor_type,
+        website=website,
+    )
     session.add(investor)
     await session.flush()
     return investor

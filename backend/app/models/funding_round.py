@@ -2,7 +2,7 @@ import uuid
 from datetime import date
 from decimal import Decimal
 
-from sqlalchemy import Date, ForeignKey, Numeric, Text
+from sqlalchemy import Date, Float, ForeignKey, Numeric, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -25,6 +25,7 @@ class FundingRound(Base, TimestampMixin):
     valuation_usd: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
     announced_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     source_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    confidence_score: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     company = relationship("Company", back_populates="funding_rounds")
     investors = relationship("Investor", secondary="round_investors", lazy="selectin")
