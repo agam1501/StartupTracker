@@ -77,6 +77,8 @@ async def list_companies(
     *,
     search: str | None = None,
     sector: str | None = None,
+    sort_by: str = "name",
+    sort_order: str = "asc",
     page: int = 1,
     page_size: int = 20,
 ) -> tuple[list[Company], int]:
@@ -94,7 +96,16 @@ async def list_companies(
 
     total = (await session.execute(count_base)).scalar_one()
 
-    stmt = base.order_by(Company.name).offset((page - 1) * page_size).limit(page_size)
+    # Sorting
+    sort_columns = {
+        "name": Company.name,
+        "created_at": Company.created_at,
+        "sector": Company.sector,
+    }
+    col = sort_columns.get(sort_by, Company.name)
+    order = col.desc().nullslast() if sort_order == "desc" else col.asc().nullslast()
+
+    stmt = base.order_by(order).offset((page - 1) * page_size).limit(page_size)
     rows = (await session.execute(stmt)).scalars().all()
     return list(rows), total
 
@@ -156,6 +167,13 @@ async def list_funding_rounds(
     *,
     company_id: uuid.UUID | None = None,
     round_type: str | None = None,
+    investor_id: uuid.UUID | None = None,
+    min_amount: float | None = None,
+    max_amount: float | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    sort_by: str = "date",
+    sort_order: str = "desc",
     page: int = 1,
     page_size: int = 20,
 ) -> tuple[list[FundingRound], int]:
@@ -171,14 +189,45 @@ async def list_funding_rounds(
     if round_type:
         base = base.where(FundingRound.round_type == round_type)
         count_base = count_base.where(FundingRound.round_type == round_type)
+    if investor_id:
+        base = base.where(
+            FundingRound.id.in_(
+                select(round_investors.c.round_id).where(
+                    round_investors.c.investor_id == investor_id
+                )
+            )
+        )
+        count_base = count_base.where(
+            FundingRound.id.in_(
+                select(round_investors.c.round_id).where(
+                    round_investors.c.investor_id == investor_id
+                )
+            )
+        )
+    if min_amount is not None:
+        base = base.where(FundingRound.amount_usd >= min_amount)
+        count_base = count_base.where(FundingRound.amount_usd >= min_amount)
+    if max_amount is not None:
+        base = base.where(FundingRound.amount_usd <= max_amount)
+        count_base = count_base.where(FundingRound.amount_usd <= max_amount)
+    if date_from:
+        base = base.where(FundingRound.announced_date >= date_from)
+        count_base = count_base.where(FundingRound.announced_date >= date_from)
+    if date_to:
+        base = base.where(FundingRound.announced_date <= date_to)
+        count_base = count_base.where(FundingRound.announced_date <= date_to)
 
     total = (await session.execute(count_base)).scalar_one()
 
-    stmt = (
-        base.order_by(FundingRound.announced_date.desc().nullslast())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
-    )
+    sort_columns = {
+        "date": FundingRound.announced_date,
+        "amount": FundingRound.amount_usd,
+        "round_type": FundingRound.round_type,
+    }
+    col = sort_columns.get(sort_by, FundingRound.announced_date)
+    order = col.desc().nullslast() if sort_order == "desc" else col.asc().nullslast()
+
+    stmt = base.order_by(order).offset((page - 1) * page_size).limit(page_size)
     rows = (await session.execute(stmt)).scalars().unique().all()
     return list(rows), total
 
@@ -218,6 +267,9 @@ async def list_investors(
     session: AsyncSession,
     *,
     search: str | None = None,
+    investor_type: str | None = None,
+    sort_by: str = "name",
+    sort_order: str = "asc",
     page: int = 1,
     page_size: int = 20,
 ) -> tuple[list[Investor], int]:
@@ -229,9 +281,19 @@ async def list_investors(
         base = base.where(Investor.normalized_name.ilike(pattern))
         count_base = count_base.where(Investor.normalized_name.ilike(pattern))
 
+    if investor_type:
+        base = base.where(Investor.investor_type == investor_type)
+        count_base = count_base.where(Investor.investor_type == investor_type)
+
     total = (await session.execute(count_base)).scalar_one()
 
-    stmt = base.order_by(Investor.name).offset((page - 1) * page_size).limit(page_size)
+    sort_columns = {
+        "name": Investor.name,
+    }
+    col = sort_columns.get(sort_by, Investor.name)
+    order = col.desc().nullslast() if sort_order == "desc" else col.asc().nullslast()
+
+    stmt = base.order_by(order).offset((page - 1) * page_size).limit(page_size)
     rows = (await session.execute(stmt)).scalars().all()
     return list(rows), total
 
@@ -348,6 +410,10 @@ async def list_acquisitions(
     *,
     acquirer_id: uuid.UUID | None = None,
     target_id: uuid.UUID | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    sort_by: str = "date",
+    sort_order: str = "desc",
     page: int = 1,
     page_size: int = 20,
 ) -> tuple[list[Acquisition], int]:
@@ -363,14 +429,23 @@ async def list_acquisitions(
     if target_id:
         base = base.where(Acquisition.target_id == target_id)
         count_base = count_base.where(Acquisition.target_id == target_id)
+    if date_from:
+        base = base.where(Acquisition.announced_date >= date_from)
+        count_base = count_base.where(Acquisition.announced_date >= date_from)
+    if date_to:
+        base = base.where(Acquisition.announced_date <= date_to)
+        count_base = count_base.where(Acquisition.announced_date <= date_to)
 
     total = (await session.execute(count_base)).scalar_one()
 
-    stmt = (
-        base.order_by(Acquisition.announced_date.desc().nullslast())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
-    )
+    sort_columns = {
+        "date": Acquisition.announced_date,
+        "amount": Acquisition.amount_usd,
+    }
+    col = sort_columns.get(sort_by, Acquisition.announced_date)
+    order = col.desc().nullslast() if sort_order == "desc" else col.asc().nullslast()
+
+    stmt = base.order_by(order).offset((page - 1) * page_size).limit(page_size)
     rows = (await session.execute(stmt)).scalars().unique().all()
     return list(rows), total
 

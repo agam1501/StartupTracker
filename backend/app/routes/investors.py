@@ -14,11 +14,22 @@ router = APIRouter(prefix="/investors", tags=["investors"])
 @router.get("", response_model=PaginatedResponse)
 async def list_investors_endpoint(
     search: str | None = Query(None, description="Search by investor name"),
+    investor_type: str | None = Query(None, description="Filter by investor type"),
+    sort_by: str = Query("name", description="Sort by: name, created_at"),
+    sort_order: str = Query("asc", description="Sort order: asc or desc"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     session: AsyncSession = Depends(get_session),
 ):
-    investors, total = await list_investors(session, search=search, page=page, page_size=page_size)
+    investors, total = await list_investors(
+        session,
+        search=search,
+        investor_type=investor_type,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        page=page,
+        page_size=page_size,
+    )
     return PaginatedResponse(
         items=[InvestorResponse.model_validate(i) for i in investors],
         total=total,

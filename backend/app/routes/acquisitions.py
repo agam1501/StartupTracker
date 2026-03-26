@@ -31,6 +31,10 @@ def _to_response(acq) -> dict:
 async def list_acquisitions_endpoint(
     acquirer_id: uuid.UUID | None = Query(None),
     target_id: uuid.UUID | None = Query(None),
+    date_from: str | None = Query(None, description="Start date (YYYY-MM-DD)"),
+    date_to: str | None = Query(None, description="End date (YYYY-MM-DD)"),
+    sort_by: str = Query("date", description="Sort by: date, amount"),
+    sort_order: str = Query("desc", description="Sort order: asc or desc"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     session: AsyncSession = Depends(get_session),
@@ -39,6 +43,10 @@ async def list_acquisitions_endpoint(
         session,
         acquirer_id=acquirer_id,
         target_id=target_id,
+        date_from=date_from,
+        date_to=date_to,
+        sort_by=sort_by,
+        sort_order=sort_order,
         page=page,
         page_size=page_size,
     )
