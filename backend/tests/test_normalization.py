@@ -1,13 +1,14 @@
 from datetime import date
 from decimal import Decimal
 
-from app.services.llm import FundingExtraction
+from app.services.llm import AcquisitionExtraction, FundingExtraction
 from app.services.normalization import (
     normalize_company_name,
     normalize_investor_name,
     normalize_round_type,
     parse_amount,
     parse_date,
+    validate_acquisition_extraction,
     validate_extraction,
 )
 
@@ -89,3 +90,53 @@ class TestValidateExtraction:
     def test_whitespace_company(self):
         e = FundingExtraction(company="   ", round_type="Seed")
         assert validate_extraction(e) is None
+
+    def test_preserves_sector_and_confidence(self):
+        e = FundingExtraction(
+            company="Acme",
+            round_type="Seed",
+            sector="AI/ML",
+            confidence_score=0.9,
+            revenue_usd=1000000,
+        )
+        result = validate_extraction(e)
+        assert result is not None
+        assert result.sector == "AI/ML"
+        assert result.confidence_score == 0.9
+        assert result.revenue_usd == Decimal("1000000")
+
+
+class TestValidateAcquisitionExtraction:
+    def test_valid(self):
+        e = AcquisitionExtraction(
+            acquirer="BigCorp",
+            target="SmallStartup",
+            amount_usd=50000000,
+            announcement_date="2026-02-01",
+            sector="Fintech",
+            confidence_score=0.88,
+        )
+        result = validate_acquisition_extraction(e)
+        assert result is not None
+        assert result.acquirer == "BigCorp"
+        assert result.target == "SmallStartup"
+        assert result.sector == "Fintech"
+
+    def test_empty_acquirer(self):
+        e = AcquisitionExtraction(acquirer="", target="SmallCo")
+        assert validate_acquisition_extraction(e) is None
+
+    def test_empty_target(self):
+        e = AcquisitionExtraction(acquirer="BigCo", target="  ")
+        assert validate_acquisition_extraction(e) is None
+
+    def test_strips_whitespace(self):
+        e = AcquisitionExtraction(acquirer="  BigCo  ", target="  SmallCo  ")
+        result = validate_acquisition_extraction(e)
+        assert result.acquirer == "BigCo"
+        assert result.target == "SmallCo"
+
+    def test_negative_amount_normalized(self):
+        e = AcquisitionExtraction(acquirer="A", target="B", amount_usd=-100)
+        result = validate_acquisition_extraction(e)
+        assert result.amount_usd is None

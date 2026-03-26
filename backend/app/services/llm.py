@@ -1,4 +1,4 @@
-"""LLM-based structured extraction of funding data from article text."""
+"""LLM-based structured extraction of funding/acquisition data from article text."""
 
 import hashlib
 import json
@@ -17,11 +17,14 @@ OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
 OPENAI_BASE_URL = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
 
 # Simple in-memory cache keyed by content hash
-_extraction_cache: dict[str, "FundingExtraction | None"] = {}
+_extraction_cache: dict[str, "ArticleExtraction | None"] = {}
 
 SYSTEM_PROMPT = """You are a structured data extraction system.
 
-Extract funding information from the given article.
+Analyze the given article and classify it as one of:
+- "funding" - a startup funding round announcement
+- "acquisition" - a company acquisition/merger announcement
+- "irrelevant" - not about funding or acquisitions
 
 Rules:
 - Only extract explicitly stated information
@@ -29,22 +32,64 @@ Rules:
 - If unknown, return null
 - Return valid JSON only
 - Normalize currency to USD if explicitly convertible
+- Provide a confidence_score (0.0-1.0) for your extraction
+- Classify the company into one of these sectors: AI/ML, Fintech, \
+Healthcare/Biotech, SaaS/Enterprise, E-Commerce/Retail, Climate/Energy, \
+Cybersecurity, EdTech, Real Estate/PropTech, Transportation/Logistics, \
+Media/Entertainment, Food/Agriculture, Hardware/Robotics, Crypto/Web3, Other
 - Do not include explanations"""
 
-USER_PROMPT_TEMPLATE = """Extract funding data from the following article:
+USER_PROMPT_TEMPLATE = """Analyze the following article and extract structured data:
 
 ARTICLE:
 {article_text}
 
-Return JSON with this exact schema:
+First determine the event_type: "funding", "acquisition", or "irrelevant".
+
+If "funding", return:
 {{
-  "company": "string",
-  "round_type": "Seed | Pre-Seed | Series A | Series B | Series C | Series D | Unknown",
-  "amount_usd": number | null,
-  "valuation_usd": number | null,
-  "investors": ["string"],
-  "announcement_date": "YYYY-MM-DD" | null
+  "event_type": "funding",
+  "funding": {{
+    "company": "string",
+    "round_type": "Seed | Pre-Seed | Series A | Series B | Series C | Series D | Unknown",
+    "amount_usd": number | null,
+    "valuation_usd": number | null,
+    "investors": ["string"],
+    "announcement_date": "YYYY-MM-DD" | null,
+    "sector": "sector name" | null,
+    "confidence_score": number (0.0-1.0),
+    "revenue_usd": number | null
+  }}
+}}
+
+If "acquisition", return:
+{{
+  "event_type": "acquisition",
+  "acquisition": {{
+    "acquirer": "string",
+    "target": "string",
+    "amount_usd": number | null,
+    "announcement_date": "YYYY-MM-DD" | null,
+    "sector": "sector name" | null,
+    "confidence_score": number (0.0-1.0)
+  }}
+}}
+
+If "irrelevant", return:
+{{
+  "event_type": "irrelevant"
 }}"""
+
+
+ALLOWED_ROUND_TYPES = {
+    "Pre-Seed",
+    "Seed",
+    "Series A",
+    "Series B",
+    "Series C",
+    "Series D",
+    "Unknown",
+}
 
 
 class FundingExtraction(BaseModel):
@@ -54,40 +99,49 @@ class FundingExtraction(BaseModel):
     valuation_usd: Decimal | None = None
     investors: list[str] = []
     announcement_date: date | None = None
+    sector: str | None = None
+    confidence_score: float | None = None
+    revenue_usd: Decimal | None = None
 
     @field_validator("round_type")
     @classmethod
     def validate_round_type(cls, v: str) -> str:
-        allowed = {
-            "Pre-Seed",
-            "Seed",
-            "Series A",
-            "Series B",
-            "Series C",
-            "Series D",
-            "Unknown",
-        }
-        return v if v in allowed else "Unknown"
+        return v if v in ALLOWED_ROUND_TYPES else "Unknown"
+
+
+class AcquisitionExtraction(BaseModel):
+    acquirer: str
+    target: str
+    amount_usd: Decimal | None = None
+    announcement_date: date | None = None
+    sector: str | None = None
+    confidence_score: float | None = None
+
+
+class ArticleExtraction(BaseModel):
+    event_type: str
+    funding: FundingExtraction | None = None
+    acquisition: AcquisitionExtraction | None = None
+
+    @field_validator("event_type")
+    @classmethod
+    def validate_event_type(cls, v: str) -> str:
+        allowed = {"funding", "acquisition", "irrelevant"}
+        return v if v in allowed else "irrelevant"
 
 
 def _content_hash(text: str) -> str:
     return hashlib.sha256(text.encode()).hexdigest()
 
 
-async def extract_funding(
+async def _call_llm(
     article_text: str,
     *,
+    system_prompt: str,
+    user_prompt: str,
     max_retries: int = 2,
-) -> FundingExtraction | None:
-    """Call LLM API to extract structured funding data from article text.
-
-    Returns None if extraction fails or article has no funding info.
-    Results are cached by content hash.
-    """
-    h = _content_hash(article_text)
-    if h in _extraction_cache:
-        return _extraction_cache[h]
-
+) -> dict | None:
+    """Call LLM API and return parsed JSON dict, or None on failure."""
     if not OPENAI_API_KEY:
         logger.warning("OPENAI_API_KEY not set, skipping extraction")
         return None
@@ -95,11 +149,8 @@ async def extract_funding(
     payload = {
         "model": OPENAI_MODEL,
         "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": USER_PROMPT_TEMPLATE.format(article_text=article_text[:8000]),
-            },
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
         ],
         "temperature": 0,
         "response_format": {"type": "json_object"},
@@ -119,15 +170,69 @@ async def extract_funding(
                 resp.raise_for_status()
 
             raw = resp.json()["choices"][0]["message"]["content"]
-            data = json.loads(raw)
-            result = FundingExtraction.model_validate(data)
-            _extraction_cache[h] = result
-            return result
+            return json.loads(raw)
 
-        except (httpx.HTTPError, json.JSONDecodeError, KeyError, ValueError) as e:
+        except (
+            httpx.HTTPError,
+            json.JSONDecodeError,
+            KeyError,
+            ValueError,
+        ) as e:
             logger.warning("Extraction attempt %d failed: %s", attempt + 1, e)
             if attempt == max_retries:
-                _extraction_cache[h] = None
                 return None
 
+    return None
+
+
+async def extract_article(
+    article_text: str,
+    *,
+    max_retries: int = 2,
+) -> ArticleExtraction | None:
+    """Extract structured data from an article, detecting event type.
+
+    Returns ArticleExtraction with event_type and type-specific data,
+    or None if extraction fails entirely.
+    Results are cached by content hash.
+    """
+    h = _content_hash(article_text)
+    if h in _extraction_cache:
+        return _extraction_cache[h]
+
+    user_prompt = USER_PROMPT_TEMPLATE.format(article_text=article_text[:8000])
+    data = await _call_llm(
+        article_text,
+        system_prompt=SYSTEM_PROMPT,
+        user_prompt=user_prompt,
+        max_retries=max_retries,
+    )
+
+    if not data:
+        _extraction_cache[h] = None
+        return None
+
+    try:
+        result = ArticleExtraction.model_validate(data)
+        _extraction_cache[h] = result
+        return result
+    except ValueError as e:
+        logger.warning("Failed to parse extraction: %s", e)
+        _extraction_cache[h] = None
+        return None
+
+
+async def extract_funding(
+    article_text: str,
+    *,
+    max_retries: int = 2,
+) -> FundingExtraction | None:
+    """Backward-compatible wrapper that extracts funding data only.
+
+    Uses the new multi-event extraction under the hood but only returns
+    FundingExtraction if the article is about funding.
+    """
+    result = await extract_article(article_text, max_retries=max_retries)
+    if result and result.event_type == "funding" and result.funding:
+        return result.funding
     return None

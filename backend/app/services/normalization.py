@@ -4,7 +4,7 @@ import re
 from datetime import date
 from decimal import Decimal, InvalidOperation
 
-from app.services.llm import FundingExtraction
+from app.services.llm import AcquisitionExtraction, FundingExtraction
 
 
 def normalize_company_name(name: str) -> str:
@@ -60,7 +60,7 @@ def parse_date(val) -> date | None:
 
 
 def validate_extraction(extraction: FundingExtraction) -> FundingExtraction | None:
-    """Validate and normalize an extraction. Returns None if invalid."""
+    """Validate and normalize a funding extraction. Returns None if invalid."""
     if not extraction.company or not extraction.company.strip():
         return None
 
@@ -71,4 +71,26 @@ def validate_extraction(extraction: FundingExtraction) -> FundingExtraction | No
         valuation_usd=parse_amount(extraction.valuation_usd),
         investors=[i.strip() for i in extraction.investors if i.strip()],
         announcement_date=parse_date(extraction.announcement_date),
+        sector=extraction.sector,
+        confidence_score=extraction.confidence_score,
+        revenue_usd=parse_amount(extraction.revenue_usd),
+    )
+
+
+def validate_acquisition_extraction(
+    extraction: AcquisitionExtraction,
+) -> AcquisitionExtraction | None:
+    """Validate and normalize an acquisition extraction. Returns None if invalid."""
+    if not extraction.acquirer or not extraction.acquirer.strip():
+        return None
+    if not extraction.target or not extraction.target.strip():
+        return None
+
+    return AcquisitionExtraction(
+        acquirer=extraction.acquirer.strip(),
+        target=extraction.target.strip(),
+        amount_usd=parse_amount(extraction.amount_usd),
+        announcement_date=parse_date(extraction.announcement_date),
+        sector=extraction.sector,
+        confidence_score=extraction.confidence_score,
     )
