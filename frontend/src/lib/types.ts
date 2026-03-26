@@ -21,6 +21,10 @@ export interface Investor {
   website: string | null;
 }
 
+export interface InvestorDetail extends Investor {
+  funding_rounds: FundingRound[];
+}
+
 export interface FundingRound {
   id: string;
   company_id: string;
