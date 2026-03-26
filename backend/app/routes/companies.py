@@ -1,0 +1,38 @@
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.schemas.common import PaginatedResponse
+from app.schemas.company import CompanyDetailResponse, CompanyResponse
+from app.services.crud import get_company, list_companies
+from app.services.db import get_session
+
+router = APIRouter(prefix="/companies", tags=["companies"])
+
+
+@router.get("", response_model=PaginatedResponse)
+async def list_companies_endpoint(
+    search: str | None = Query(None, description="Search by company name"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    session: AsyncSession = Depends(get_session),
+):
+    companies, total = await list_companies(session, search=search, page=page, page_size=page_size)
+    return PaginatedResponse(
+        items=[CompanyResponse.model_validate(c) for c in companies],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.get("/{company_id}", response_model=CompanyDetailResponse)
+async def get_company_endpoint(
+    company_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+):
+    company = await get_company(session, company_id)
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    return CompanyDetailResponse.model_validate(company)
