@@ -1,10 +1,18 @@
 import type {
+  Acquisition,
+  AcquisitionSummary,
+  CoInvestorPair,
   Company,
   CompanyDetail,
+  FundingByMonth,
+  FundingBySector,
   FundingRound,
   Investor,
   PaginatedResponse,
+  RoundTypeDistribution,
+  SectorSummary,
   Stats,
+  TopInvestor,
 } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -29,8 +37,12 @@ function buildQuery(params: Record<string, string | number | undefined>) {
   return qs ? `?${qs}` : "";
 }
 
+// Companies
 export async function getCompanies(params?: {
   search?: string;
+  sector?: string;
+  sort_by?: string;
+  sort_order?: string;
   page?: number;
   page_size?: number;
 }): Promise<PaginatedResponse<Company>> {
@@ -41,23 +53,86 @@ export async function getCompany(id: string): Promise<CompanyDetail> {
   return fetchApi(`/companies/${id}`);
 }
 
+// Funding Rounds
 export async function getFundingRounds(params?: {
   company_id?: string;
   round_type?: string;
+  investor_id?: string;
+  min_amount?: number;
+  max_amount?: number;
+  date_from?: string;
+  date_to?: string;
+  sort_by?: string;
+  sort_order?: string;
   page?: number;
   page_size?: number;
 }): Promise<PaginatedResponse<FundingRound>> {
   return fetchApi(`/funding-rounds${buildQuery(params || {})}`);
 }
 
+// Investors
 export async function getInvestors(params?: {
   search?: string;
+  investor_type?: string;
+  sort_by?: string;
+  sort_order?: string;
   page?: number;
   page_size?: number;
 }): Promise<PaginatedResponse<Investor>> {
   return fetchApi(`/investors${buildQuery(params || {})}`);
 }
 
+// Acquisitions
+export async function getAcquisitions(params?: {
+  acquirer_id?: string;
+  target_id?: string;
+  date_from?: string;
+  date_to?: string;
+  sort_by?: string;
+  sort_order?: string;
+  page?: number;
+  page_size?: number;
+}): Promise<PaginatedResponse<Acquisition>> {
+  return fetchApi(`/acquisitions${buildQuery(params || {})}`);
+}
+
+// Stats
 export async function getStats(): Promise<Stats> {
   return fetchApi("/stats");
+}
+
+// Analytics
+export async function getFundingBySector(): Promise<FundingBySector[]> {
+  return fetchApi("/analytics/funding-by-sector");
+}
+
+export async function getFundingByMonth(params?: {
+  sector?: string;
+  months?: number;
+}): Promise<FundingByMonth[]> {
+  return fetchApi(`/analytics/funding-by-month${buildQuery(params || {})}`);
+}
+
+export async function getTopInvestors(params?: {
+  limit?: number;
+}): Promise<TopInvestor[]> {
+  return fetchApi(`/analytics/top-investors${buildQuery(params || {})}`);
+}
+
+export async function getCoInvestors(params?: {
+  limit?: number;
+}): Promise<CoInvestorPair[]> {
+  return fetchApi(`/analytics/co-investors${buildQuery(params || {})}`);
+}
+
+export async function getSectorSummary(): Promise<SectorSummary[]> {
+  return fetchApi("/analytics/sector-summary");
+}
+
+export async function getAcquisitionsSummary(): Promise<AcquisitionSummary[]> {
+  return fetchApi("/analytics/acquisitions-summary");
+}
+
+export async function getRoundTypeDistribution(): Promise<RoundTypeDistribution[]> {
+  return fetchApi("/analytics/round-type-distribution");
 }
