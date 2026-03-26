@@ -5,17 +5,133 @@ import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.crud import (
+    create_acquisition,
     create_funding_round,
     create_raw_source,
     get_raw_source_by_url,
     mark_source_processed,
+    update_company_sector,
 )
-from app.services.dedup import get_or_create_company, get_or_create_investor, is_duplicate_round
+from app.services.dedup import (
+    get_or_create_company,
+    get_or_create_investor,
+    is_duplicate_acquisition,
+    is_duplicate_round,
+)
 from app.services.fetcher import fetch_article_text, parse_rss_feed
-from app.services.llm import extract_funding
-from app.services.normalization import validate_extraction
+from app.services.llm import extract_article
+from app.services.normalization import (
+    validate_acquisition_extraction,
+    validate_extraction,
+)
 
 logger = logging.getLogger(__name__)
+
+
+async def _handle_funding(session, extraction, url, raw):
+    """Process a funding extraction."""
+    validated = validate_extraction(extraction.funding)
+    if not validated:
+        await mark_source_processed(session, raw.id)
+        await session.commit()
+        return {"url": url, "status": "validation_failed"}
+
+    company = await get_or_create_company(session, validated.company)
+
+    # Update sector if LLM provided one and company doesn't have one
+    if validated.sector:
+        await update_company_sector(session, company.id, validated.sector)
+
+    if await is_duplicate_round(
+        session,
+        company.id,
+        validated.round_type,
+        validated.announcement_date,
+        validated.amount_usd,
+    ):
+        await mark_source_processed(session, raw.id)
+        await session.commit()
+        return {"url": url, "status": "duplicate_round", "company": company.name}
+
+    investor_ids = []
+    for inv_name in validated.investors:
+        inv = await get_or_create_investor(session, inv_name)
+        investor_ids.append(inv.id)
+
+    await create_funding_round(
+        session,
+        company_id=company.id,
+        round_type=validated.round_type,
+        amount_usd=validated.amount_usd,
+        valuation_usd=validated.valuation_usd,
+        announced_date=validated.announcement_date,
+        source_url=url,
+        investor_ids=investor_ids,
+        confidence_score=validated.confidence_score,
+    )
+
+    await mark_source_processed(session, raw.id)
+    await session.commit()
+
+    return {
+        "url": url,
+        "status": "ingested",
+        "event_type": "funding",
+        "company": company.name,
+        "round_type": validated.round_type,
+    }
+
+
+async def _handle_acquisition(session, extraction, url, raw):
+    """Process an acquisition extraction."""
+    validated = validate_acquisition_extraction(extraction.acquisition)
+    if not validated:
+        await mark_source_processed(session, raw.id)
+        await session.commit()
+        return {"url": url, "status": "validation_failed"}
+
+    acquirer = await get_or_create_company(session, validated.acquirer)
+    target = await get_or_create_company(session, validated.target)
+
+    # Update sectors if provided
+    if validated.sector:
+        await update_company_sector(session, target.id, validated.sector)
+
+    if await is_duplicate_acquisition(
+        session,
+        acquirer.id,
+        target.id,
+        validated.announcement_date,
+    ):
+        await mark_source_processed(session, raw.id)
+        await session.commit()
+        return {
+            "url": url,
+            "status": "duplicate_acquisition",
+            "acquirer": acquirer.name,
+            "target": target.name,
+        }
+
+    await create_acquisition(
+        session,
+        acquirer_id=acquirer.id,
+        target_id=target.id,
+        amount_usd=validated.amount_usd,
+        announced_date=validated.announcement_date,
+        source_url=url,
+        confidence_score=validated.confidence_score,
+    )
+
+    await mark_source_processed(session, raw.id)
+    await session.commit()
+
+    return {
+        "url": url,
+        "status": "ingested",
+        "event_type": "acquisition",
+        "acquirer": acquirer.name,
+        "target": target.name,
+    }
 
 
 async def ingest_url(
@@ -45,63 +161,23 @@ async def ingest_url(
         if not raw.content:
             raw.content = text[:50000]
 
-    # 4. LLM extraction
-    extraction = await extract_funding(text)
+    # 4. LLM extraction (multi-event)
+    extraction = await extract_article(text)
     if not extraction:
         await mark_source_processed(session, raw.id)
         await session.commit()
         return {"url": url, "status": "extraction_failed"}
 
-    # 5. Validate and normalize
-    validated = validate_extraction(extraction)
-    if not validated:
+    # 5. Branch on event type
+    if extraction.event_type == "funding" and extraction.funding:
+        return await _handle_funding(session, extraction, url, raw)
+    elif extraction.event_type == "acquisition" and extraction.acquisition:
+        return await _handle_acquisition(session, extraction, url, raw)
+    else:
+        # Irrelevant article
         await mark_source_processed(session, raw.id)
         await session.commit()
-        return {"url": url, "status": "validation_failed"}
-
-    # 6. Dedup company
-    company = await get_or_create_company(session, validated.company)
-
-    # 7. Check for duplicate round
-    if await is_duplicate_round(
-        session,
-        company.id,
-        validated.round_type,
-        validated.announcement_date,
-        validated.amount_usd,
-    ):
-        await mark_source_processed(session, raw.id)
-        await session.commit()
-        return {"url": url, "status": "duplicate_round", "company": company.name}
-
-    # 8. Dedup investors
-    investor_ids = []
-    for inv_name in validated.investors:
-        inv = await get_or_create_investor(session, inv_name)
-        investor_ids.append(inv.id)
-
-    # 9. Create funding round
-    await create_funding_round(
-        session,
-        company_id=company.id,
-        round_type=validated.round_type,
-        amount_usd=validated.amount_usd,
-        valuation_usd=validated.valuation_usd,
-        announced_date=validated.announcement_date,
-        source_url=url,
-        investor_ids=investor_ids,
-    )
-
-    # 10. Mark processed
-    await mark_source_processed(session, raw.id)
-    await session.commit()
-
-    return {
-        "url": url,
-        "status": "ingested",
-        "company": company.name,
-        "round_type": validated.round_type,
-    }
+        return {"url": url, "status": "irrelevant"}
 
 
 async def ingest_rss_feed(

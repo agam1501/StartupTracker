@@ -5,6 +5,7 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.acquisition import Acquisition
 from app.models.company import Company
 from app.models.funding_round import FundingRound
 from app.models.investor import Investor
@@ -123,6 +124,38 @@ async def is_duplicate_round(
         # Check date window
         delta = abs((announced_date - fr.announced_date).days)
         if delta <= ROUND_DATE_WINDOW_DAYS:
+            return True
+
+    return False
+
+
+ACQUISITION_DATE_WINDOW_DAYS = 30
+
+
+async def is_duplicate_acquisition(
+    session: AsyncSession,
+    acquirer_id,
+    target_id,
+    announced_date=None,
+) -> bool:
+    """Check if a similar acquisition already exists.
+
+    Match criteria: same acquirer + same target + within date window.
+    """
+    stmt = select(Acquisition).where(
+        Acquisition.acquirer_id == acquirer_id,
+        Acquisition.target_id == target_id,
+    )
+    existing = (await session.execute(stmt)).scalars().all()
+
+    if not existing:
+        return False
+
+    for acq in existing:
+        if announced_date is None or acq.announced_date is None:
+            return True
+        delta = abs((announced_date - acq.announced_date).days)
+        if delta <= ACQUISITION_DATE_WINDOW_DAYS:
             return True
 
     return False

@@ -56,6 +56,20 @@ async def get_company(
     return result.scalar_one_or_none()
 
 
+async def update_company_sector(
+    session: AsyncSession,
+    company_id: uuid.UUID,
+    sector: str,
+) -> None:
+    """Update a company's sector if not already set."""
+    stmt = select(Company).where(Company.id == company_id)
+    result = await session.execute(stmt)
+    company = result.scalar_one_or_none()
+    if company and not company.sector:
+        company.sector = sector
+        await session.flush()
+
+
 async def list_companies(
     session: AsyncSession,
     *,
