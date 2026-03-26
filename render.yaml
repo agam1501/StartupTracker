@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: startuptracker-api
+    runtime: python
+    region: oregon
+    plan: free
+    buildCommand: cd backend && pip install -e .
+    startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: PYTHON_VERSION
+        value: "3.11"
+
+  - type: cron
+    name: startuptracker-ingest
+    runtime: python
+    region: oregon
+    plan: free
+    schedule: "0 */6 * * *"
+    buildCommand: cd backend && pip install -e .
+    startCommand: cd backend && python -m app.services.cron_ingest
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: FEED_URLS
+        value: ""
