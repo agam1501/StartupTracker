@@ -13,6 +13,7 @@ import {
   Handshake,
   PieChart,
   Rss,
+  Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -60,6 +61,20 @@ export default function Nav() {
               </Link>
             );
           })}
+          <button
+            onClick={() =>
+              document.dispatchEvent(
+                new KeyboardEvent("keydown", { key: "k", metaKey: true }),
+              )
+            }
+            className="ml-2 flex items-center gap-1.5 rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-700"
+          >
+            <Search className="h-3.5 w-3.5" />
+            <span className="hidden lg:inline">Search</span>
+            <kbd className="rounded border border-gray-200 bg-gray-50 px-1 py-0.5 text-[10px] leading-none text-gray-400">
+              ⌘K
+            </kbd>
+          </button>
         </div>
 
         {/* Mobile hamburger */}

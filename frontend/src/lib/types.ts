@@ -126,3 +126,15 @@ export interface MonitoredSource {
   last_checked_at: string | null;
   created_at: string;
 }
+
+export interface SearchResult {
+  id: string;
+  name: string;
+  sector?: string | null;
+  investor_type?: string | null;
+}
+
+export interface SearchResults {
+  companies: SearchResult[];
+  investors: SearchResult[];
+}

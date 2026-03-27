@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Nav from "@/components/Nav";
+import GlobalSearch from "@/components/GlobalSearch";
 import { Providers } from "@/components/providers";
 import "./globals.css";
 
@@ -18,6 +19,7 @@ export default function RootLayout({
       <body className="antialiased bg-gray-50">
         <Providers>
           <Nav />
+          <GlobalSearch />
           <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
             {children}
           </main>
