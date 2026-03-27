@@ -6,6 +6,7 @@ export interface Company {
   sector: string | null;
   revenue_usd: string | null;
   revenue_as_of_date: string | null;
+  status: string;
   created_at: string;
 }
 

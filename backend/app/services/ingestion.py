@@ -12,6 +12,7 @@ from app.services.crud import (
     mark_source_processed,
     update_company_revenue,
     update_company_sector,
+    update_company_status,
 )
 from app.services.dedup import (
     get_or_create_company,
@@ -124,6 +125,9 @@ async def _handle_acquisition(session, extraction, url, raw):
         source_url=url,
         confidence_score=validated.confidence_score,
     )
+
+    # Mark the target company as acquired
+    await update_company_status(session, target.id, "acquired")
 
     await mark_source_processed(session, raw.id)
 

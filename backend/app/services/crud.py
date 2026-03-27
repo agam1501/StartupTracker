@@ -91,6 +91,20 @@ async def update_company_revenue(
         await session.flush()
 
 
+async def update_company_status(
+    session: AsyncSession,
+    company_id: uuid.UUID,
+    status: str,
+) -> None:
+    """Update a company's status (e.g., 'acquired', 'ipo', 'defunct')."""
+    stmt = select(Company).where(Company.id == company_id)
+    result = await session.execute(stmt)
+    company = result.scalar_one_or_none()
+    if company:
+        company.status = status
+        await session.flush()
+
+
 async def list_companies(
     session: AsyncSession,
     *,
