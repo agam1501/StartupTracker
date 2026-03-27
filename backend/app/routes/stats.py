@@ -11,6 +11,8 @@ class StatsResponse(BaseModel):
     total_rounds: int
     total_investors: int
     total_funding_usd: float
+    total_acquisitions: int
+    top_sector: str | None
 
 
 router = APIRouter(prefix="/stats", tags=["stats"])

@@ -231,10 +231,12 @@ class TestStatsAPI:
         assert data["total_rounds"] == 0
         assert data["total_investors"] == 0
         assert data["total_funding_usd"] == 0
+        assert data["total_acquisitions"] == 0
+        assert data["top_sector"] is None
 
     @pytest.mark.asyncio
     async def test_stats_with_data(self, client, session):
-        c = await create_company(session, "Acme Corp")
+        c = await create_company(session, "Acme Corp", sector="AI/ML")
         inv = await create_investor(session, "VC Fund")
         await create_funding_round(
             session,
@@ -251,6 +253,8 @@ class TestStatsAPI:
         assert data["total_rounds"] == 1
         assert data["total_investors"] == 1
         assert data["total_funding_usd"] == 1_000_000
+        assert data["total_acquisitions"] == 0
+        assert data["top_sector"] == "AI/ML"
 
 
 class TestFundingRoundCompanyName:

@@ -487,11 +487,29 @@ async def get_stats(session: AsyncSession) -> dict:
     total_funding = (
         await session.execute(select(func.coalesce(func.sum(FundingRound.amount_usd), 0)))
     ).scalar_one()
+    total_acquisitions = (
+        await session.execute(select(func.count()).select_from(Acquisition))
+    ).scalar_one()
+
+    # Top sector by company count
+    top_sector_row = (
+        await session.execute(
+            select(Company.sector, func.count().label("cnt"))
+            .where(Company.sector.isnot(None))
+            .group_by(Company.sector)
+            .order_by(func.count().desc())
+            .limit(1)
+        )
+    ).first()
+    top_sector = top_sector_row[0] if top_sector_row else None
+
     return {
         "total_companies": total_companies,
         "total_rounds": total_rounds,
         "total_investors": total_investors,
         "total_funding_usd": float(total_funding),
+        "total_acquisitions": total_acquisitions,
+        "top_sector": top_sector,
     }
 
 

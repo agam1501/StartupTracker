@@ -64,6 +64,8 @@ export interface Stats {
   total_rounds: number;
   total_investors: number;
   total_funding_usd: number;
+  total_acquisitions: number;
+  top_sector: string | null;
 }
 
 // Analytics types
