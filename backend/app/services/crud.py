@@ -63,6 +63,34 @@ async def update_company_sector(
         await session.flush()
 
 
+async def update_company_revenue(
+    session: AsyncSession,
+    company_id: uuid.UUID,
+    revenue_usd,
+    revenue_as_of_date=None,
+) -> None:
+    """Update a company's revenue if not already set or if new date is more recent."""
+    stmt = select(Company).where(Company.id == company_id)
+    result = await session.execute(stmt)
+    company = result.scalar_one_or_none()
+    if not company:
+        return
+
+    # Update if company has no revenue, or new data has a more recent date
+    should_update = False
+    if company.revenue_usd is None:
+        should_update = True
+    elif revenue_as_of_date and (
+        company.revenue_as_of_date is None or revenue_as_of_date > company.revenue_as_of_date
+    ):
+        should_update = True
+
+    if should_update:
+        company.revenue_usd = revenue_usd
+        company.revenue_as_of_date = revenue_as_of_date
+        await session.flush()
+
+
 async def list_companies(
     session: AsyncSession,
     *,
