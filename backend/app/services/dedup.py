@@ -9,11 +9,8 @@ from app.models.acquisition import Acquisition
 from app.models.company import Company
 from app.models.funding_round import FundingRound
 from app.models.investor import Investor
-from app.services.crud import (
-    create_company,
-    create_investor,
-    normalize_name,
-)
+from app.services.crud import create_company, create_investor
+from app.services.normalization import normalize_name
 
 logger = logging.getLogger(__name__)
 

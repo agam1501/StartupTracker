@@ -1,4 +1,3 @@
-import re
 import uuid
 from datetime import UTC
 
@@ -13,15 +12,7 @@ from app.models.investor import Investor
 from app.models.monitored_source import MonitoredSource
 from app.models.raw_source import RawSource
 from app.models.round_investor import round_investors
-
-
-def normalize_name(name: str) -> str:
-    """Lowercase, strip common suffixes, collapse whitespace."""
-    n = name.lower().strip()
-    n = re.sub(r"\b(inc|llc|ltd|corp|co|plc)\.?\b", "", n)
-    n = re.sub(r"[^\w\s]", "", n)
-    return re.sub(r"\s+", " ", n).strip()
-
+from app.services.normalization import normalize_name
 
 # ---------------------------------------------------------------------------
 # Companies

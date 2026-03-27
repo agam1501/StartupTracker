@@ -3,21 +3,19 @@
 import hashlib
 import json
 import logging
-import os
+from collections import OrderedDict
 from datetime import date
 from decimal import Decimal
 
 import httpx
 from pydantic import BaseModel, field_validator
 
+from app.config import settings
+
 logger = logging.getLogger(__name__)
 
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
-OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
-OPENAI_BASE_URL = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
-
-# Simple in-memory cache keyed by content hash
-_extraction_cache: dict[str, "ArticleExtraction | None"] = {}
+# LRU-style cache keyed by content hash, capped at settings.llm_cache_max_size
+_extraction_cache: OrderedDict[str, "ArticleExtraction | None"] = OrderedDict()
 
 SYSTEM_PROMPT = """You are a structured data extraction system.
 
@@ -134,6 +132,13 @@ def _content_hash(text: str) -> str:
     return hashlib.sha256(text.encode()).hexdigest()
 
 
+def _cache_put(key: str, value: "ArticleExtraction | None") -> None:
+    """Insert into the LRU cache, evicting oldest entry if full."""
+    _extraction_cache[key] = value
+    if len(_extraction_cache) > settings.llm_cache_max_size:
+        _extraction_cache.popitem(last=False)
+
+
 async def _call_llm(
     article_text: str,
     *,
@@ -142,12 +147,12 @@ async def _call_llm(
     max_retries: int = 2,
 ) -> dict | None:
     """Call LLM API and return parsed JSON dict, or None on failure."""
-    if not OPENAI_API_KEY:
+    if not settings.openai_api_key:
         logger.warning("OPENAI_API_KEY not set, skipping extraction")
         return None
 
     payload = {
-        "model": OPENAI_MODEL,
+        "model": settings.openai_model,
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
@@ -158,11 +163,11 @@ async def _call_llm(
 
     for attempt in range(max_retries + 1):
         try:
-            async with httpx.AsyncClient(timeout=30) as client:
+            async with httpx.AsyncClient(timeout=settings.openai_timeout) as client:
                 resp = await client.post(
-                    f"{OPENAI_BASE_URL}/chat/completions",
+                    f"{settings.openai_base_url}/chat/completions",
                     headers={
-                        "Authorization": f"Bearer {OPENAI_API_KEY}",
+                        "Authorization": f"Bearer {settings.openai_api_key}",
                         "Content-Type": "application/json",
                     },
                     json=payload,
@@ -209,16 +214,16 @@ async def extract_article(
     )
 
     if not data:
-        _extraction_cache[h] = None
+        _cache_put(h, None)
         return None
 
     try:
         result = ArticleExtraction.model_validate(data)
-        _extraction_cache[h] = result
+        _cache_put(h, result)
         return result
     except ValueError as e:
         logger.warning("Failed to parse extraction: %s", e)
-        _extraction_cache[h] = None
+        _cache_put(h, None)
         return None
 
 

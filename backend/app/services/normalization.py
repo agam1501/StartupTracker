@@ -7,12 +7,16 @@ from decimal import Decimal, InvalidOperation
 from app.services.llm import AcquisitionExtraction, FundingExtraction
 
 
-def normalize_company_name(name: str) -> str:
+def normalize_name(name: str) -> str:
     """Lowercase, strip suffixes (Inc, LLC, etc.), collapse whitespace."""
     n = name.lower().strip()
     n = re.sub(r"\b(inc|llc|ltd|corp|co|plc)\.?\b", "", n)
     n = re.sub(r"[^\w\s]", "", n)
     return re.sub(r"\s+", " ", n).strip()
+
+
+# Backward-compatible alias
+normalize_company_name = normalize_name
 
 
 def normalize_investor_name(name: str) -> str:
