@@ -1,6 +1,14 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { Building2, TrendingUp, Users, DollarSign, Globe } from "lucide-react";
+import {
+  Building2,
+  TrendingUp,
+  Users,
+  DollarSign,
+  Globe,
+  Handshake,
+  Layers,
+} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { SectorBadge } from "@/components/ui/sector-badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -41,10 +49,24 @@ async function StatsBar() {
       value: formatUSD(String(stats.total_funding_usd)),
       icon: DollarSign,
     },
+    {
+      label: "Acquisitions",
+      value: stats.total_acquisitions.toLocaleString(),
+      icon: Handshake,
+    },
+    ...(stats.top_sector
+      ? [
+          {
+            label: "Top Sector",
+            value: stats.top_sector,
+            icon: Layers,
+          },
+        ]
+      : []),
   ];
 
   return (
-    <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
       {items.map(({ label, value, icon: Icon }) => (
         <Card key={label}>
           <CardContent className="flex items-center gap-4 p-5">
@@ -64,8 +86,8 @@ async function StatsBar() {
 
 function StatsBarSkeleton() {
   return (
-    <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {[...Array(4)].map((_, i) => (
+    <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      {[...Array(6)].map((_, i) => (
         <Card key={i}>
           <CardContent className="flex items-center gap-4 p-5">
             <Skeleton className="h-10 w-10 rounded-lg" />
