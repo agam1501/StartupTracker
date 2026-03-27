@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import {
   BarChart,
   Bar,
@@ -18,6 +19,8 @@ function formatAmount(value: number): string {
 }
 
 export function TopInvestorsChart({ data }: { data: TopInvestor[] }) {
+  const router = useRouter();
+
   if (data.length === 0) {
     return <p className="py-8 text-center text-sm text-gray-400">No data</p>;
   }
@@ -42,7 +45,16 @@ export function TopInvestorsChart({ data }: { data: TopInvestor[] }) {
             return [formatAmount(Number(value)), "Total Invested"];
           }}
         />
-        <Bar dataKey="deal_count" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+        <Bar
+          dataKey="deal_count"
+          fill="#3b82f6"
+          radius={[0, 4, 4, 0]}
+          className="cursor-pointer"
+          onClick={(_entry, index) => {
+            const investor = data[index];
+            if (investor?.id) router.push(`/investors/${investor.id}`);
+          }}
+        />
       </BarChart>
     </ResponsiveContainer>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { SectorSummary } from "@/lib/types";
 
 function formatAmount(value: number): string {
@@ -39,8 +40,13 @@ export function SectorSummaryTable({ data }: { data: SectorSummary[] }) {
         <tbody className="divide-y divide-gray-100">
           {data.map((row) => (
             <tr key={row.sector} className="hover:bg-gray-50/50">
-              <td className="whitespace-nowrap px-4 py-2.5 text-sm font-medium text-gray-900">
-                {row.sector}
+              <td className="whitespace-nowrap px-4 py-2.5 text-sm font-medium">
+                <Link
+                  href={`/?sector=${encodeURIComponent(row.sector)}`}
+                  className="text-blue-600 hover:underline"
+                >
+                  {row.sector}
+                </Link>
               </td>
               <td className="whitespace-nowrap px-4 py-2.5 text-right text-sm text-gray-600">
                 {row.company_count}

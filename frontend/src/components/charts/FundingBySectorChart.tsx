@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import {
   BarChart,
   Bar,
@@ -25,6 +26,8 @@ function formatAmount(value: number): string {
 }
 
 export function FundingBySectorChart({ data }: { data: FundingBySector[] }) {
+  const router = useRouter();
+
   if (data.length === 0) {
     return <p className="py-8 text-center text-sm text-gray-400">No data</p>;
   }
@@ -42,7 +45,15 @@ export function FundingBySectorChart({ data }: { data: FundingBySector[] }) {
         <Tooltip
           formatter={(value) => [formatAmount(Number(value)), "Total Funding"]}
         />
-        <Bar dataKey="total_amount" radius={[0, 4, 4, 0]}>
+        <Bar
+          dataKey="total_amount"
+          radius={[0, 4, 4, 0]}
+          className="cursor-pointer"
+          onClick={(_entry, index) => {
+            const sector = data[index]?.sector;
+            if (sector) router.push(`/?sector=${encodeURIComponent(sector)}`);
+          }}
+        >
           {data.map((_, i) => (
             <Cell key={i} fill={COLORS[i % COLORS.length]} />
           ))}
