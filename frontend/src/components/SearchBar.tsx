@@ -11,8 +11,13 @@ export default function SearchBar({ basePath = "/" }: { basePath?: string }) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const params = new URLSearchParams();
-    if (query.trim()) params.set("search", query.trim());
+    const params = new URLSearchParams(searchParams.toString());
+    if (query.trim()) {
+      params.set("search", query.trim());
+    } else {
+      params.delete("search");
+    }
+    params.delete("page");
     router.push(`${basePath}?${params.toString()}`);
   }
 
