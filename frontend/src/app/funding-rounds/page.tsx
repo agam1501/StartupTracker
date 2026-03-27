@@ -4,6 +4,7 @@ import { TrendingUp } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { RoundBadge } from "@/components/ui/badge";
 import FilterBar from "@/components/FilterBar";
+import AdvancedFilters from "@/components/AdvancedFilters";
 import Pagination from "@/components/Pagination";
 import { getFundingRounds } from "@/lib/api";
 import { formatUSD, formatDate } from "@/lib/format";
@@ -23,6 +24,10 @@ interface PageProps {
     sort_by?: string;
     sort_order?: string;
     page?: string;
+    min_amount?: string;
+    max_amount?: string;
+    date_from?: string;
+    date_to?: string;
   }>;
 }
 
@@ -32,6 +37,10 @@ export default async function FundingRoundsPage({ searchParams }: PageProps) {
   const sortBy = params.sort_by || "";
   const sortOrder = params.sort_order || "";
   const page = parseInt(params.page || "1", 10);
+  const minAmount = params.min_amount || "";
+  const maxAmount = params.max_amount || "";
+  const dateFrom = params.date_from || "";
+  const dateTo = params.date_to || "";
 
   let data;
   let error: string | null = null;
@@ -40,6 +49,10 @@ export default async function FundingRoundsPage({ searchParams }: PageProps) {
       round_type: roundType || undefined,
       sort_by: sortBy || undefined,
       sort_order: sortOrder || undefined,
+      min_amount: minAmount ? Number(minAmount) : undefined,
+      max_amount: maxAmount ? Number(maxAmount) : undefined,
+      date_from: dateFrom || undefined,
+      date_to: dateTo || undefined,
       page,
       page_size: 20,
     });
@@ -71,6 +84,9 @@ export default async function FundingRoundsPage({ searchParams }: PageProps) {
               { label: "Round Type", value: "round_type" },
             ]}
           />
+        </Suspense>
+        <Suspense fallback={null}>
+          <AdvancedFilters />
         </Suspense>
       </div>
 
@@ -172,6 +188,10 @@ export default async function FundingRoundsPage({ searchParams }: PageProps) {
                 ...(roundType ? { round_type: roundType } : {}),
                 ...(sortBy ? { sort_by: sortBy } : {}),
                 ...(sortOrder ? { sort_order: sortOrder } : {}),
+                ...(minAmount ? { min_amount: minAmount } : {}),
+                ...(maxAmount ? { max_amount: maxAmount } : {}),
+                ...(dateFrom ? { date_from: dateFrom } : {}),
+                ...(dateTo ? { date_to: dateTo } : {}),
               }}
             />
           </div>
