@@ -10,6 +10,7 @@ from app.services.crud import (
     create_raw_source,
     get_raw_source_by_url,
     mark_source_processed,
+    update_company_revenue,
     update_company_sector,
 )
 from app.services.dedup import (
@@ -41,6 +42,12 @@ async def _handle_funding(session, extraction, url, raw):
     # Update sector if LLM provided one and company doesn't have one
     if validated.sector:
         await update_company_sector(session, company.id, validated.sector)
+
+    # Update revenue if LLM extracted it
+    if validated.revenue_usd:
+        await update_company_revenue(
+            session, company.id, validated.revenue_usd, validated.revenue_as_of_date
+        )
 
     if await is_duplicate_round(
         session,

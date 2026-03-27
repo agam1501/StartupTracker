@@ -35,6 +35,7 @@ Rules:
 Healthcare/Biotech, SaaS/Enterprise, E-Commerce/Retail, Climate/Energy, \
 Cybersecurity, EdTech, Real Estate/PropTech, Transportation/Logistics, \
 Media/Entertainment, Food/Agriculture, Hardware/Robotics, Crypto/Web3, Other
+- If annual revenue or ARR is explicitly mentioned, extract as revenue_usd and revenue_as_of_date
 - Do not include explanations"""
 
 USER_PROMPT_TEMPLATE = """Analyze the following article and extract structured data:
@@ -56,7 +57,8 @@ If "funding", return:
     "announcement_date": "YYYY-MM-DD" | null,
     "sector": "sector name" | null,
     "confidence_score": number (0.0-1.0),
-    "revenue_usd": number | null
+    "revenue_usd": number | null,
+    "revenue_as_of_date": "YYYY-MM-DD" | null
   }}
 }}
 
@@ -100,6 +102,7 @@ class FundingExtraction(BaseModel):
     sector: str | None = None
     confidence_score: float | None = None
     revenue_usd: Decimal | None = None
+    revenue_as_of_date: date | None = None
 
     @field_validator("round_type")
     @classmethod

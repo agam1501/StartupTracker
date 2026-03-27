@@ -78,6 +78,7 @@ def validate_extraction(extraction: FundingExtraction) -> FundingExtraction | No
         sector=extraction.sector,
         confidence_score=extraction.confidence_score,
         revenue_usd=parse_amount(extraction.revenue_usd),
+        revenue_as_of_date=parse_date(extraction.revenue_as_of_date),
     )
 
 
