@@ -117,7 +117,7 @@ class TestExtractArticle:
 
     @pytest.mark.asyncio
     async def test_no_api_key(self):
-        with patch("app.services.llm.OPENAI_API_KEY", ""):
+        with patch("app.services.llm.settings.openai_api_key", ""):
             result = await extract_article("some article text")
             assert result is None
 
@@ -140,7 +140,7 @@ class TestExtractArticle:
         mock_client = _mock_llm_response(mock_data)
 
         with (
-            patch("app.services.llm.OPENAI_API_KEY", "test-key"),
+            patch("app.services.llm.settings.openai_api_key", "test-key"),
             patch(
                 "app.services.llm.httpx.AsyncClient",
                 return_value=mock_client,
@@ -171,7 +171,7 @@ class TestExtractArticle:
         mock_client = _mock_llm_response(mock_data)
 
         with (
-            patch("app.services.llm.OPENAI_API_KEY", "test-key"),
+            patch("app.services.llm.settings.openai_api_key", "test-key"),
             patch(
                 "app.services.llm.httpx.AsyncClient",
                 return_value=mock_client,
@@ -190,7 +190,7 @@ class TestExtractArticle:
         mock_client = _mock_llm_response(mock_data)
 
         with (
-            patch("app.services.llm.OPENAI_API_KEY", "test-key"),
+            patch("app.services.llm.settings.openai_api_key", "test-key"),
             patch(
                 "app.services.llm.httpx.AsyncClient",
                 return_value=mock_client,
@@ -209,7 +209,7 @@ class TestExtractArticle:
             event_type="funding",
             funding=FundingExtraction(company="Cached", round_type="Seed"),
         )
-        with patch("app.services.llm.OPENAI_API_KEY", "test-key"):
+        with patch("app.services.llm.settings.openai_api_key", "test-key"):
             h = _content_hash("cached article")
             _extraction_cache[h] = cached
 
@@ -229,7 +229,7 @@ class TestExtractFunding:
 
     @pytest.mark.asyncio
     async def test_no_api_key(self):
-        with patch("app.services.llm.OPENAI_API_KEY", ""):
+        with patch("app.services.llm.settings.openai_api_key", ""):
             result = await extract_funding("some article text")
             assert result is None
 
@@ -252,7 +252,7 @@ class TestExtractFunding:
         mock_client = _mock_llm_response(mock_data)
 
         with (
-            patch("app.services.llm.OPENAI_API_KEY", "test-key"),
+            patch("app.services.llm.settings.openai_api_key", "test-key"),
             patch(
                 "app.services.llm.httpx.AsyncClient",
                 return_value=mock_client,
@@ -278,7 +278,7 @@ class TestExtractFunding:
         mock_client = _mock_llm_response(mock_data)
 
         with (
-            patch("app.services.llm.OPENAI_API_KEY", "test-key"),
+            patch("app.services.llm.settings.openai_api_key", "test-key"),
             patch(
                 "app.services.llm.httpx.AsyncClient",
                 return_value=mock_client,
@@ -294,7 +294,7 @@ class TestExtractFunding:
             event_type="funding",
             funding=FundingExtraction(company="Cached", round_type="Seed"),
         )
-        with patch("app.services.llm.OPENAI_API_KEY", "test-key"):
+        with patch("app.services.llm.settings.openai_api_key", "test-key"):
             h = _content_hash("cached article")
             _extraction_cache[h] = cached
 

@@ -56,7 +56,7 @@ class TestExtractFundingEdge:
         mock_client.post = AsyncMock(return_value=mock_resp)
 
         with (
-            patch("app.services.llm.OPENAI_API_KEY", "test-key"),
+            patch("app.services.llm.settings.openai_api_key", "test-key"),
             patch("app.services.llm.httpx.AsyncClient", return_value=mock_client),
         ):
             result = await extract_funding("article text")
@@ -80,7 +80,7 @@ class TestExtractFundingEdge:
         )
 
         with (
-            patch("app.services.llm.OPENAI_API_KEY", "test-key"),
+            patch("app.services.llm.settings.openai_api_key", "test-key"),
             patch("app.services.llm.httpx.AsyncClient", return_value=mock_client),
         ):
             result = await extract_funding("article text http error")
@@ -90,7 +90,7 @@ class TestExtractFundingEdge:
     @pytest.mark.asyncio
     async def test_empty_text(self):
         """Empty article text with no API key should return None."""
-        with patch("app.services.llm.OPENAI_API_KEY", ""):
+        with patch("app.services.llm.settings.openai_api_key", ""):
             result = await extract_funding("")
             assert result is None
 
@@ -113,7 +113,7 @@ class TestExtractFundingEdge:
         mock_client.post = AsyncMock(return_value=mock_resp)
 
         with (
-            patch("app.services.llm.OPENAI_API_KEY", "test-key"),
+            patch("app.services.llm.settings.openai_api_key", "test-key"),
             patch("app.services.llm.httpx.AsyncClient", return_value=mock_client),
         ):
             result = await extract_funding("article text")

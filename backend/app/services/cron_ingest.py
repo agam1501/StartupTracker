@@ -2,8 +2,8 @@
 
 import asyncio
 import logging
-import os
 
+from app.config import settings
 from app.services.crud import get_active_sources, mark_source_checked
 from app.services.db import async_session
 from app.services.ingestion import ingest_rss_feed, ingest_webpage_source
@@ -11,7 +11,7 @@ from app.services.ingestion import ingest_rss_feed, ingest_webpage_source
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-FEED_URLS = [u.strip() for u in os.environ.get("FEED_URLS", "").split(",") if u.strip()]
+FEED_URLS = [u.strip() for u in settings.feed_urls.split(",") if u.strip()]
 
 
 async def main():

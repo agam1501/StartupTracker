@@ -14,8 +14,8 @@ from app.services.crud import (
     list_investors,
     list_unprocessed_sources,
     mark_source_processed,
-    normalize_name,
 )
+from app.services.normalization import normalize_name
 
 # ---------------------------------------------------------------------------
 # normalize_name
