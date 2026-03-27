@@ -114,3 +114,14 @@ export interface RoundTypeDistribution {
   count: number;
   total_amount: number;
 }
+
+export interface MonitoredSource {
+  id: string;
+  name: string;
+  url: string;
+  source_type: string;
+  investor_id: string | null;
+  active: boolean;
+  last_checked_at: string | null;
+  created_at: string;
+}

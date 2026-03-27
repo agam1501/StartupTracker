@@ -12,6 +12,7 @@ import {
   BarChart3,
   Handshake,
   PieChart,
+  Rss,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +22,7 @@ const NAV_ITEMS = [
   { href: "/acquisitions", label: "Acquisitions", icon: Handshake },
   { href: "/investors", label: "Investors", icon: Users },
   { href: "/analytics", label: "Analytics", icon: PieChart },
+  { href: "/sources", label: "Sources", icon: Rss },
 ];
 
 export default function Nav() {

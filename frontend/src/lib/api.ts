@@ -9,6 +9,7 @@ import type {
   FundingRound,
   Investor,
   InvestorDetail,
+  MonitoredSource,
   PaginatedResponse,
   RoundTypeDistribution,
   SectorSummary,
@@ -140,4 +141,41 @@ export async function getAcquisitionsSummary(): Promise<AcquisitionSummary[]> {
 
 export async function getRoundTypeDistribution(): Promise<RoundTypeDistribution[]> {
   return fetchApi("/analytics/round-type-distribution");
+}
+
+// Sources
+export async function getSources(params?: {
+  source_type?: string;
+  active?: boolean;
+  page?: number;
+  page_size?: number;
+}): Promise<PaginatedResponse<MonitoredSource>> {
+  const queryParams: Record<string, string | number | undefined> = {
+    source_type: params?.source_type,
+    page: params?.page,
+    page_size: params?.page_size,
+  };
+  if (params?.active !== undefined) queryParams.active = params.active ? "true" : "false";
+  return fetchApi(`/sources${buildQuery(queryParams)}`);
+}
+
+export async function createSource(data: {
+  name: string;
+  url: string;
+  source_type: string;
+}): Promise<MonitoredSource> {
+  return fetchApi("/sources", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateSource(
+  id: string,
+  data: { active?: boolean; name?: string; url?: string; source_type?: string },
+): Promise<MonitoredSource> {
+  return fetchApi(`/sources/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
 }
