@@ -1,9 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FundingTrendsChart } from "@/components/charts/FundingTrendsChart";
 import { FundingBySectorChart } from "@/components/charts/FundingBySectorChart";
 import { TopInvestorsChart } from "@/components/charts/TopInvestorsChart";
 import { SectorSummaryTable } from "@/components/charts/SectorSummaryTable";
 import { RoundTypeChart } from "@/components/charts/RoundTypeChart";
 import {
+  getFundingByMonth,
   getFundingBySector,
   getTopInvestors,
   getSectorSummary,
@@ -12,6 +14,7 @@ import {
 } from "@/lib/api";
 
 export default async function AnalyticsPage() {
+  let fundingByMonth;
   let fundingBySector;
   let topInvestors;
   let sectorSummary;
@@ -20,8 +23,9 @@ export default async function AnalyticsPage() {
   let error: string | null = null;
 
   try {
-    [fundingBySector, topInvestors, sectorSummary, roundTypes, coInvestors] =
+    [fundingByMonth, fundingBySector, topInvestors, sectorSummary, roundTypes, coInvestors] =
       await Promise.all([
+        getFundingByMonth(),
         getFundingBySector(),
         getTopInvestors({ limit: 10 }),
         getSectorSummary(),
@@ -48,6 +52,16 @@ export default async function AnalyticsPage() {
           Market intelligence and funding trends.
         </p>
       </div>
+
+      {/* Funding Trends - full width */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="text-base">Funding Trends</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <FundingTrendsChart initialData={fundingByMonth || []} />
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Funding by Sector */}
