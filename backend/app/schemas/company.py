@@ -11,6 +11,7 @@ class CompanyBase(BaseModel):
     sector: str | None = None
     revenue_usd: Decimal | None = None
     revenue_as_of_date: date | None = None
+    status: str = "active"
 
 
 class CompanyCreate(CompanyBase):

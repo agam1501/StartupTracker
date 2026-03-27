@@ -78,11 +78,24 @@ export default async function CompanyDetailPage({ params }: PageProps) {
               <h1 className="text-2xl font-bold text-gray-900">
                 {company.name}
               </h1>
-              {company.sector && (
-                <div className="mt-1">
-                  <SectorBadge sector={company.sector} />
-                </div>
-              )}
+              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                {company.sector && <SectorBadge sector={company.sector} />}
+                {company.status && company.status !== "active" && (
+                  <span
+                    className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                      company.status === "acquired"
+                        ? "bg-amber-100 text-amber-700"
+                        : company.status === "ipo"
+                          ? "bg-green-100 text-green-700"
+                          : company.status === "defunct"
+                            ? "bg-red-100 text-red-700"
+                            : "bg-gray-100 text-gray-700"
+                    }`}
+                  >
+                    {company.status.charAt(0).toUpperCase() + company.status.slice(1)}
+                  </span>
+                )}
+              </div>
               {company.website && (
                 <a
                   href={company.website}

@@ -18,5 +18,6 @@ class Company(Base, TimestampMixin):
     sector: Mapped[str | None] = mapped_column(Text, nullable=True, index=True)
     revenue_usd: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
     revenue_as_of_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default="active", index=True)
 
     funding_rounds = relationship("FundingRound", back_populates="company", lazy="selectin")
