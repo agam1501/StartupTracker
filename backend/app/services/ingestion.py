@@ -30,11 +30,10 @@ logger = logging.getLogger(__name__)
 
 
 async def _handle_funding(session, extraction, url, raw):
-    """Process a funding extraction."""
+    """Process a funding extraction. Does NOT commit — caller handles that."""
     validated = validate_extraction(extraction.funding)
     if not validated:
         await mark_source_processed(session, raw.id)
-        await session.commit()
         return {"url": url, "status": "validation_failed"}
 
     company = await get_or_create_company(session, validated.company)
@@ -51,7 +50,6 @@ async def _handle_funding(session, extraction, url, raw):
         validated.amount_usd,
     ):
         await mark_source_processed(session, raw.id)
-        await session.commit()
         return {"url": url, "status": "duplicate_round", "company": company.name}
 
     investor_ids = []
@@ -72,7 +70,6 @@ async def _handle_funding(session, extraction, url, raw):
     )
 
     await mark_source_processed(session, raw.id)
-    await session.commit()
 
     return {
         "url": url,
@@ -84,11 +81,10 @@ async def _handle_funding(session, extraction, url, raw):
 
 
 async def _handle_acquisition(session, extraction, url, raw):
-    """Process an acquisition extraction."""
+    """Process an acquisition extraction. Does NOT commit — caller handles that."""
     validated = validate_acquisition_extraction(extraction.acquisition)
     if not validated:
         await mark_source_processed(session, raw.id)
-        await session.commit()
         return {"url": url, "status": "validation_failed"}
 
     acquirer = await get_or_create_company(session, validated.acquirer)
@@ -105,7 +101,6 @@ async def _handle_acquisition(session, extraction, url, raw):
         validated.announcement_date,
     ):
         await mark_source_processed(session, raw.id)
-        await session.commit()
         return {
             "url": url,
             "status": "duplicate_acquisition",
@@ -124,7 +119,6 @@ async def _handle_acquisition(session, extraction, url, raw):
     )
 
     await mark_source_processed(session, raw.id)
-    await session.commit()
 
     return {
         "url": url,
@@ -142,6 +136,8 @@ async def ingest_url(
 ) -> dict:
     """Process a single URL through the full pipeline.
 
+    All database writes happen in a single transaction — on failure,
+    everything is rolled back so no partial data is persisted.
     Returns a status dict with outcome details.
     """
     # 1. Check if already processed
@@ -154,31 +150,42 @@ async def ingest_url(
     if not text:
         return {"url": url, "status": "fetch_failed"}
 
-    # 3. Store raw source
-    if not existing:
-        raw = await create_raw_source(session, source_url=url, title=title, content=text[:50000])
-    else:
-        raw = existing
-        if not raw.content:
-            raw.content = text[:50000]
+    try:
+        # 3. Store raw source
+        if not existing:
+            raw = await create_raw_source(
+                session, source_url=url, title=title, content=text[:50000]
+            )
+        else:
+            raw = existing
+            if not raw.content:
+                raw.content = text[:50000]
 
-    # 4. LLM extraction (multi-event)
-    extraction = await extract_article(text)
-    if not extraction:
-        await mark_source_processed(session, raw.id)
-        await session.commit()
-        return {"url": url, "status": "extraction_failed"}
+        # 4. LLM extraction (multi-event)
+        extraction = await extract_article(text)
+        if not extraction:
+            await mark_source_processed(session, raw.id)
+            await session.commit()
+            return {"url": url, "status": "extraction_failed"}
 
-    # 5. Branch on event type
-    if extraction.event_type == "funding" and extraction.funding:
-        return await _handle_funding(session, extraction, url, raw)
-    elif extraction.event_type == "acquisition" and extraction.acquisition:
-        return await _handle_acquisition(session, extraction, url, raw)
-    else:
-        # Irrelevant article
-        await mark_source_processed(session, raw.id)
+        # 5. Branch on event type
+        if extraction.event_type == "funding" and extraction.funding:
+            result = await _handle_funding(session, extraction, url, raw)
+        elif extraction.event_type == "acquisition" and extraction.acquisition:
+            result = await _handle_acquisition(session, extraction, url, raw)
+        else:
+            # Irrelevant article
+            await mark_source_processed(session, raw.id)
+            result = {"url": url, "status": "irrelevant"}
+
+        # Single commit for the entire pipeline
         await session.commit()
-        return {"url": url, "status": "irrelevant"}
+        return result
+
+    except Exception:
+        logger.exception("Ingestion failed for %s, rolling back", url)
+        await session.rollback()
+        return {"url": url, "status": "error"}
 
 
 async def ingest_rss_feed(
