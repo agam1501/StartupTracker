@@ -16,6 +16,20 @@ logger = logging.getLogger(__name__)
 
 FUZZY_THRESHOLD = 85  # rapidfuzz score threshold (0-100)
 ROUND_DATE_WINDOW_DAYS = 7
+MIN_PREFIX_LEN = 4  # minimum prefix length for substring candidate search
+
+
+def _candidate_query(model, normalized: str):
+    """Build a query that narrows fuzzy match candidates using a substring filter.
+
+    For short names (< MIN_PREFIX_LEN chars), loads all rows since the set is
+    likely small. For longer names, filters by normalized_name containing the
+    first MIN_PREFIX_LEN characters.
+    """
+    if len(normalized) < MIN_PREFIX_LEN:
+        return select(model)
+    prefix = normalized[:MIN_PREFIX_LEN]
+    return select(model).where(model.normalized_name.ilike(f"%{prefix}%"))
 
 
 def _fuzzy_match(a: str, b: str) -> float:
@@ -44,10 +58,10 @@ async def get_or_create_company(
     if exact:
         return exact
 
-    # Fuzzy match against all companies
-    all_stmt = select(Company)
-    all_companies = (await session.execute(all_stmt)).scalars().all()
-    for company in all_companies:
+    # Fuzzy match against candidate companies (substring filter to avoid loading all rows)
+    candidates_stmt = _candidate_query(Company, normalized)
+    candidates = (await session.execute(candidates_stmt)).scalars().all()
+    for company in candidates:
         score = _fuzzy_match(normalized, company.normalized_name)
         if score >= FUZZY_THRESHOLD:
             logger.info(
@@ -76,10 +90,10 @@ async def get_or_create_investor(
     if exact:
         return exact
 
-    # Fuzzy match
-    all_stmt = select(Investor)
-    all_investors = (await session.execute(all_stmt)).scalars().all()
-    for investor in all_investors:
+    # Fuzzy match against candidate investors (substring filter)
+    candidates_stmt = _candidate_query(Investor, normalized)
+    candidates = (await session.execute(candidates_stmt)).scalars().all()
+    for investor in candidates:
         score = _fuzzy_match(normalized, investor.normalized_name)
         if score >= FUZZY_THRESHOLD:
             logger.info(
