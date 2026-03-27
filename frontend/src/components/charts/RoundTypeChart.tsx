@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import {
   PieChart,
   Pie,
@@ -16,6 +17,8 @@ const COLORS = [
 ];
 
 export function RoundTypeChart({ data }: { data: RoundTypeDistribution[] }) {
+  const router = useRouter();
+
   if (data.length === 0) {
     return <p className="py-8 text-center text-sm text-gray-400">No data</p>;
   }
@@ -31,6 +34,13 @@ export function RoundTypeChart({ data }: { data: RoundTypeDistribution[] }) {
           cy="50%"
           outerRadius={100}
           label={({ name, value }) => `${name}: ${value}`}
+          className="cursor-pointer"
+          onClick={(_entry, index) => {
+            const roundType = data[index]?.round_type;
+            if (roundType) {
+              router.push(`/funding-rounds?round_type=${encodeURIComponent(roundType)}`);
+            }
+          }}
         >
           {data.map((_, i) => (
             <Cell key={i} fill={COLORS[i % COLORS.length]} />
