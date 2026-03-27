@@ -11,8 +11,9 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RoundBadge } from "@/components/ui/badge";
 import { SectorBadge } from "@/components/ui/sector-badge";
-import { getCompany } from "@/lib/api";
+import { getCompany, getAcquisitions } from "@/lib/api";
 import { formatUSD, formatDate } from "@/lib/format";
+import type { Acquisition } from "@/lib/types";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -27,6 +28,16 @@ export default async function CompanyDetailPage({ params }: PageProps) {
   } catch {
     notFound();
   }
+
+  // Fetch acquisitions where this company is acquirer or target
+  const [acquiredData, acquiredByData] = await Promise.all([
+    getAcquisitions({ acquirer_id: id, page_size: 50 }).catch(() => null),
+    getAcquisitions({ target_id: id, page_size: 50 }).catch(() => null),
+  ]);
+  const acquisitionsAsAcquirer = acquiredData?.items ?? [];
+  const acquisitionsAsTarget = acquiredByData?.items ?? [];
+  const hasAcquisitions =
+    acquisitionsAsAcquirer.length > 0 || acquisitionsAsTarget.length > 0;
 
   const totalRaised = company.funding_rounds.reduce((sum, r) => {
     return sum + (r.amount_usd ? parseFloat(r.amount_usd) : 0);
@@ -107,6 +118,69 @@ export default async function CompanyDetailPage({ params }: PageProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Acquisitions Section */}
+      {hasAcquisitions && (
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Acquisitions</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {acquisitionsAsAcquirer.length > 0 && (
+              <div>
+                <h3 className="mb-2 text-sm font-medium text-gray-500">
+                  Companies Acquired
+                </h3>
+                <div className="space-y-2">
+                  {acquisitionsAsAcquirer.map((acq: Acquisition) => (
+                    <div
+                      key={acq.id}
+                      className="flex items-center justify-between rounded-lg border p-3"
+                    >
+                      <Link
+                        href={`/companies/${acq.target_id}`}
+                        className="font-medium text-blue-600 hover:underline"
+                      >
+                        {acq.target_name || "Unknown"}
+                      </Link>
+                      <div className="flex items-center gap-4 text-sm text-gray-500">
+                        <span>{formatUSD(acq.amount_usd)}</span>
+                        <span>{formatDate(acq.announced_date)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {acquisitionsAsTarget.length > 0 && (
+              <div>
+                <h3 className="mb-2 text-sm font-medium text-gray-500">
+                  Acquired By
+                </h3>
+                <div className="space-y-2">
+                  {acquisitionsAsTarget.map((acq: Acquisition) => (
+                    <div
+                      key={acq.id}
+                      className="flex items-center justify-between rounded-lg border p-3"
+                    >
+                      <Link
+                        href={`/companies/${acq.acquirer_id}`}
+                        className="font-medium text-blue-600 hover:underline"
+                      >
+                        {acq.acquirer_name || "Unknown"}
+                      </Link>
+                      <div className="flex items-center gap-4 text-sm text-gray-500">
+                        <span>{formatUSD(acq.amount_usd)}</span>
+                        <span>{formatDate(acq.announced_date)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-8 lg:grid-cols-3">
         {/* Funding Timeline */}

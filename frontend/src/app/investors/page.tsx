@@ -4,11 +4,16 @@ import { Users } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import SearchBar from "@/components/SearchBar";
 import Pagination from "@/components/Pagination";
+import InvestorTypeFilter from "@/components/InvestorTypeFilter";
 import { getInvestors } from "@/lib/api";
 import type { Investor } from "@/lib/types";
 
 interface PageProps {
-  searchParams: Promise<{ search?: string; page?: string }>;
+  searchParams: Promise<{
+    search?: string;
+    page?: string;
+    investor_type?: string;
+  }>;
 }
 
 function InvestorCard({ investor }: { investor: Investor }) {
@@ -46,18 +51,24 @@ export default async function InvestorsPage({ searchParams }: PageProps) {
   const params = await searchParams;
   const search = params.search || "";
   const page = parseInt(params.page || "1", 10);
+  const investorType = params.investor_type || "";
 
   let data;
   let error: string | null = null;
   try {
     data = await getInvestors({
       search: search || undefined,
+      investor_type: investorType || undefined,
       page,
       page_size: 24,
     });
   } catch {
     error = "Failed to load investors. Is the backend running?";
   }
+
+  const extraParams: Record<string, string> = {};
+  if (search) extraParams.search = search;
+  if (investorType) extraParams.investor_type = investorType;
 
   return (
     <>
@@ -68,9 +79,14 @@ export default async function InvestorsPage({ searchParams }: PageProps) {
         </p>
       </div>
 
-      <div className="mb-6">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div className="flex-1">
+          <Suspense fallback={null}>
+            <SearchBar basePath="/investors" />
+          </Suspense>
+        </div>
         <Suspense fallback={null}>
-          <SearchBar basePath="/investors" />
+          <InvestorTypeFilter />
         </Suspense>
       </div>
 
@@ -92,11 +108,11 @@ export default async function InvestorsPage({ searchParams }: PageProps) {
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <Users className="mb-4 h-12 w-12 text-gray-300" />
               <p className="text-lg font-medium text-gray-900">
-                {search ? "No results found" : "No investors yet"}
+                {search || investorType ? "No results found" : "No investors yet"}
               </p>
               <p className="mt-1 text-sm text-gray-500">
-                {search
-                  ? "Try a different search term."
+                {search || investorType
+                  ? "Try adjusting your filters."
                   : "Investors will appear here after ingestion."}
               </p>
             </div>
@@ -108,7 +124,7 @@ export default async function InvestorsPage({ searchParams }: PageProps) {
               pageSize={24}
               total={data.total}
               basePath="/investors"
-              extraParams={search ? { search } : {}}
+              extraParams={extraParams}
             />
           </div>
         </>
