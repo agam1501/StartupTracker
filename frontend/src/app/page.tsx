@@ -1,10 +1,11 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { Building2, TrendingUp, Users, DollarSign, Globe } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { SectorBadge } from "@/components/ui/sector-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import SearchBar from "@/components/SearchBar";
+import FilterBar from "@/components/FilterBar";
 import Pagination from "@/components/Pagination";
 import { getCompanies, getStats } from "@/lib/api";
 import { formatUSD } from "@/lib/format";
@@ -119,13 +120,39 @@ function CompanyCard({ company }: { company: Company }) {
   );
 }
 
+const SECTORS = [
+  "AI/ML",
+  "Fintech",
+  "Healthcare/Biotech",
+  "SaaS/Enterprise",
+  "E-Commerce/Retail",
+  "Climate/Energy",
+  "Cybersecurity",
+  "EdTech",
+  "Real Estate/PropTech",
+  "Transportation/Logistics",
+  "Media/Entertainment",
+  "Food/Agriculture",
+  "Hardware/Robotics",
+  "Crypto/Web3",
+];
+
 interface PageProps {
-  searchParams: Promise<{ search?: string; page?: string }>;
+  searchParams: Promise<{
+    search?: string;
+    sector?: string;
+    sort_by?: string;
+    sort_order?: string;
+    page?: string;
+  }>;
 }
 
 export default async function Home({ searchParams }: PageProps) {
   const params = await searchParams;
   const search = params.search || "";
+  const sector = params.sector || "";
+  const sortBy = params.sort_by || "";
+  const sortOrder = params.sort_order || "";
   const page = parseInt(params.page || "1", 10);
 
   let data;
@@ -133,6 +160,9 @@ export default async function Home({ searchParams }: PageProps) {
   try {
     data = await getCompanies({
       search: search || undefined,
+      sector: sector || undefined,
+      sort_by: sortBy || undefined,
+      sort_order: sortOrder || undefined,
       page,
       page_size: 21,
     });
@@ -155,9 +185,27 @@ export default async function Home({ searchParams }: PageProps) {
         </div>
       </div>
 
-      <div className="mb-6">
+      <div className="mb-4">
         <Suspense fallback={null}>
           <SearchBar />
+        </Suspense>
+      </div>
+
+      <div className="mb-6">
+        <Suspense fallback={null}>
+          <FilterBar
+            basePath="/"
+            pillFilter={{
+              param: "sector",
+              options: SECTORS.map((s) => ({ label: s, value: s })),
+              label: "Sector",
+            }}
+            sortOptions={[
+              { label: "Name", value: "name" },
+              { label: "Date Added", value: "created_at" },
+              { label: "Sector", value: "sector" },
+            ]}
+          />
         </Suspense>
       </div>
 
@@ -195,7 +243,12 @@ export default async function Home({ searchParams }: PageProps) {
               pageSize={21}
               total={data.total}
               basePath="/"
-              extraParams={search ? { search } : {}}
+              extraParams={{
+                ...(search ? { search } : {}),
+                ...(sector ? { sector } : {}),
+                ...(sortBy ? { sort_by: sortBy } : {}),
+                ...(sortOrder ? { sort_order: sortOrder } : {}),
+              }}
             />
           </div>
         </>
