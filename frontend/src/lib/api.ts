@@ -12,6 +12,7 @@ import type {
   MonitoredSource,
   PaginatedResponse,
   RoundTypeDistribution,
+  SearchResults,
   SectorSummary,
   Stats,
   TopInvestor,
@@ -178,4 +179,9 @@ export async function updateSource(
     method: "PATCH",
     body: JSON.stringify(data),
   });
+}
+
+// Search
+export async function globalSearch(q: string): Promise<SearchResults> {
+  return fetchApi(`/search${buildQuery({ q })}`);
 }
