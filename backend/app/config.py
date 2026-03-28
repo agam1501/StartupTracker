@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     # LLM extraction cache
     llm_cache_max_size: int = 1024
 
+    # Rate limiting
+    rate_limit_ingest: str = "10/minute"
+    rate_limit_process: str = "5/minute"
+    rate_limit_batch: str = "2/minute"
+
     # RSS fallback
     feed_urls: str = ""
 
