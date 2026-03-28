@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { RoundBadge } from "@/components/ui/badge";
 import { getInvestor } from "@/lib/api";
 import { formatUSD, formatDate } from "@/lib/format";
+import InvestorSectorBreakdown from "@/components/InvestorSectorBreakdown";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -101,6 +102,9 @@ export default async function InvestorDetailPage({ params }: PageProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Sector Breakdown */}
+      <InvestorSectorBreakdown fundingRounds={investor.funding_rounds} />
 
       {/* Funding Rounds */}
       <h2 className="mb-4 text-lg font-semibold text-gray-900">
