@@ -1,11 +1,16 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.common import PaginatedResponse
-from app.schemas.funding_round import FundingRoundResponse
-from app.services.crud import get_funding_round, list_funding_rounds
+from app.schemas.funding_round import FundingRoundResponse, FundingRoundUpdate
+from app.services.crud import (
+    delete_funding_round,
+    get_funding_round,
+    list_funding_rounds,
+    update_funding_round,
+)
 from app.services.db import get_session
 
 router = APIRouter(prefix="/funding-rounds", tags=["funding_rounds"])
@@ -57,3 +62,29 @@ async def get_funding_round_endpoint(
     if not fr:
         raise HTTPException(status_code=404, detail="Funding round not found")
     return FundingRoundResponse.model_validate(fr)
+
+
+@router.patch("/{round_id}", response_model=FundingRoundResponse)
+async def update_funding_round_endpoint(
+    round_id: uuid.UUID,
+    body: FundingRoundUpdate,
+    session: AsyncSession = Depends(get_session),
+):
+    updates = body.model_dump(exclude_unset=True)
+    fr = await update_funding_round(session, round_id, **updates)
+    if not fr:
+        raise HTTPException(status_code=404, detail="Funding round not found")
+    await session.commit()
+    return FundingRoundResponse.model_validate(fr)
+
+
+@router.delete("/{round_id}", status_code=204)
+async def delete_funding_round_endpoint(
+    round_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+):
+    deleted = await delete_funding_round(session, round_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Funding round not found")
+    await session.commit()
+    return Response(status_code=204)

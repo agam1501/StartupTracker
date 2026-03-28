@@ -17,6 +17,7 @@ async def session():
 
         dbapi_conn.create_function("gen_random_uuid", 0, lambda: _uuid.uuid4().hex)
         dbapi_conn.create_function("now", 0, lambda: _dt.datetime.now(_dt.UTC).isoformat())
+        dbapi_conn.execute("PRAGMA foreign_keys = ON")
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

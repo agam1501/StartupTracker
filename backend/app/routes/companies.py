@@ -1,11 +1,11 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.common import PaginatedResponse
-from app.schemas.company import CompanyDetailResponse, CompanyResponse
-from app.services.crud import get_company, list_companies
+from app.schemas.company import CompanyDetailResponse, CompanyResponse, CompanyUpdate
+from app.services.crud import delete_company, get_company, list_companies, update_company
 from app.services.db import get_session
 
 router = APIRouter(prefix="/companies", tags=["companies"])
@@ -47,3 +47,29 @@ async def get_company_endpoint(
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
     return CompanyDetailResponse.model_validate(company)
+
+
+@router.patch("/{company_id}", response_model=CompanyDetailResponse)
+async def update_company_endpoint(
+    company_id: uuid.UUID,
+    body: CompanyUpdate,
+    session: AsyncSession = Depends(get_session),
+):
+    updates = body.model_dump(exclude_unset=True)
+    company = await update_company(session, company_id, **updates)
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+    await session.commit()
+    return CompanyDetailResponse.model_validate(company)
+
+
+@router.delete("/{company_id}", status_code=204)
+async def delete_company_endpoint(
+    company_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+):
+    deleted = await delete_company(session, company_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Company not found")
+    await session.commit()
+    return Response(status_code=204)

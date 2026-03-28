@@ -31,6 +31,16 @@ async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+async function fetchApiNoContent(path: string, init?: RequestInit): Promise<void> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    headers: { "Content-Type": "application/json", ...init?.headers },
+  });
+  if (!res.ok) {
+    throw new Error(`API error: ${res.status} ${res.statusText}`);
+  }
+}
+
 function buildQuery(params: Record<string, string | number | undefined>) {
   const query = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
@@ -56,6 +66,27 @@ export async function getCompany(id: string): Promise<CompanyDetail> {
   return fetchApi(`/companies/${id}`);
 }
 
+export async function updateCompany(
+  id: string,
+  data: {
+    name?: string;
+    website?: string | null;
+    sector?: string | null;
+    revenue_usd?: number | null;
+    revenue_as_of_date?: string | null;
+    status?: string;
+  },
+): Promise<CompanyDetail> {
+  return fetchApi(`/companies/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteCompany(id: string): Promise<void> {
+  return fetchApiNoContent(`/companies/${id}`, { method: "DELETE" });
+}
+
 // Funding Rounds
 export async function getFundingRounds(params?: {
   company_id?: string;
@@ -71,6 +102,26 @@ export async function getFundingRounds(params?: {
   page_size?: number;
 }): Promise<PaginatedResponse<FundingRound>> {
   return fetchApi(`/funding-rounds${buildQuery(params || {})}`);
+}
+
+export async function updateFundingRound(
+  id: string,
+  data: {
+    round_type?: string;
+    amount_usd?: number | null;
+    valuation_usd?: number | null;
+    announced_date?: string | null;
+    source_url?: string | null;
+  },
+): Promise<FundingRound> {
+  return fetchApi(`/funding-rounds/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteFundingRound(id: string): Promise<void> {
+  return fetchApiNoContent(`/funding-rounds/${id}`, { method: "DELETE" });
 }
 
 // Investors
