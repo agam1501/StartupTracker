@@ -20,6 +20,14 @@ class FundingRoundCreate(FundingRoundBase):
     company_id: uuid.UUID
 
 
+class FundingRoundUpdate(BaseModel):
+    round_type: str | None = None
+    amount_usd: Decimal | None = None
+    valuation_usd: Decimal | None = None
+    announced_date: date | None = None
+    source_url: str | None = None
+
+
 class FundingRoundResponse(FundingRoundBase):
     id: uuid.UUID
     company_id: uuid.UUID

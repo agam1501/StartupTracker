@@ -18,6 +18,15 @@ class CompanyCreate(CompanyBase):
     pass
 
 
+class CompanyUpdate(BaseModel):
+    name: str | None = None
+    website: str | None = None
+    sector: str | None = None
+    revenue_usd: Decimal | None = None
+    revenue_as_of_date: date | None = None
+    status: str | None = None
+
+
 class CompanyResponse(CompanyBase):
     id: uuid.UUID
     normalized_name: str

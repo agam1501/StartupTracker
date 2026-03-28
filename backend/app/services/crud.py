@@ -105,6 +105,43 @@ async def update_company_status(
         await session.flush()
 
 
+async def update_company(
+    session: AsyncSession,
+    company_id: uuid.UUID,
+    **kwargs,
+) -> Company | None:
+    stmt = (
+        select(Company)
+        .options(selectinload(Company.funding_rounds).selectinload(FundingRound.investors))
+        .where(Company.id == company_id)
+    )
+    result = await session.execute(stmt)
+    company = result.scalar_one_or_none()
+    if not company:
+        return None
+    if "name" in kwargs:
+        kwargs["normalized_name"] = normalize_name(kwargs["name"])
+    for key, value in kwargs.items():
+        if hasattr(company, key):
+            setattr(company, key, value)
+    await session.flush()
+    return company
+
+
+async def delete_company(
+    session: AsyncSession,
+    company_id: uuid.UUID,
+) -> bool:
+    stmt = select(Company).where(Company.id == company_id)
+    result = await session.execute(stmt)
+    company = result.scalar_one_or_none()
+    if not company:
+        return False
+    await session.delete(company)
+    await session.flush()
+    return True
+
+
 async def list_companies(
     session: AsyncSession,
     *,
@@ -193,6 +230,41 @@ async def get_funding_round(
     )
     result = await session.execute(stmt)
     return result.scalar_one_or_none()
+
+
+async def update_funding_round(
+    session: AsyncSession,
+    round_id: uuid.UUID,
+    **kwargs,
+) -> FundingRound | None:
+    stmt = (
+        select(FundingRound)
+        .options(selectinload(FundingRound.investors))
+        .where(FundingRound.id == round_id)
+    )
+    result = await session.execute(stmt)
+    fr = result.scalar_one_or_none()
+    if not fr:
+        return None
+    for key, value in kwargs.items():
+        if hasattr(fr, key):
+            setattr(fr, key, value)
+    await session.flush()
+    return fr
+
+
+async def delete_funding_round(
+    session: AsyncSession,
+    round_id: uuid.UUID,
+) -> bool:
+    stmt = select(FundingRound).where(FundingRound.id == round_id)
+    result = await session.execute(stmt)
+    fr = result.scalar_one_or_none()
+    if not fr:
+        return False
+    await session.delete(fr)
+    await session.flush()
+    return True
 
 
 async def list_funding_rounds(

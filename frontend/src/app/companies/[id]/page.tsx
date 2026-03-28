@@ -14,6 +14,8 @@ import { SectorBadge } from "@/components/ui/sector-badge";
 import { getCompany, getAcquisitions } from "@/lib/api";
 import { formatUSD, formatDate } from "@/lib/format";
 import type { Acquisition } from "@/lib/types";
+import CompanyActions from "@/components/CompanyActions";
+import FundingRoundActions from "@/components/FundingRoundActions";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -109,24 +111,29 @@ export default async function CompanyDetailPage({ params }: PageProps) {
               )}
             </div>
           </div>
-          <div className="flex gap-6">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-gray-900">
-                {company.funding_rounds.length}
-              </p>
-              <p className="text-xs text-gray-500">Rounds</p>
+          <div className="flex items-center gap-4">
+            <div className="flex gap-6">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-gray-900">
+                  {company.funding_rounds.length}
+                </p>
+                <p className="text-xs text-gray-500">Rounds</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-gray-900">
+                  {totalRaised > 0 ? formatUSD(String(totalRaised)) : "-"}
+                </p>
+                <p className="text-xs text-gray-500">Total Raised</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-gray-900">
+                  {allInvestors.size}
+                </p>
+                <p className="text-xs text-gray-500">Investors</p>
+              </div>
             </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-gray-900">
-                {totalRaised > 0 ? formatUSD(String(totalRaised)) : "-"}
-              </p>
-              <p className="text-xs text-gray-500">Total Raised</p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-gray-900">
-                {allInvestors.size}
-              </p>
-              <p className="text-xs text-gray-500">Investors</p>
+            <div className="border-l border-gray-200 pl-4">
+              <CompanyActions company={company} />
             </div>
           </div>
         </CardContent>
@@ -227,10 +234,13 @@ export default async function CompanyDetailPage({ params }: PageProps) {
                             {formatUSD(round.amount_usd)}
                           </span>
                         </div>
-                        <span className="flex items-center gap-1 text-sm text-gray-400">
-                          <Calendar className="h-3.5 w-3.5" />
-                          {formatDate(round.announced_date)}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="flex items-center gap-1 text-sm text-gray-400">
+                            <Calendar className="h-3.5 w-3.5" />
+                            {formatDate(round.announced_date)}
+                          </span>
+                          <FundingRoundActions round={round} />
+                        </div>
                       </div>
 
                       {round.valuation_usd && (
