@@ -32,6 +32,7 @@ class FundingRoundResponse(FundingRoundBase):
     id: uuid.UUID
     company_id: uuid.UUID
     company_name: str | None = None
+    company_sector: str | None = None
     created_at: datetime
     investors: list[InvestorResponse] = []
 

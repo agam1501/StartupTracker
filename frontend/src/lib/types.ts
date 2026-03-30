@@ -30,6 +30,7 @@ export interface FundingRound {
   id: string;
   company_id: string;
   company_name: string | null;
+  company_sector: string | null;
   round_type: string;
   amount_usd: string | null;
   valuation_usd: string | null;

@@ -33,3 +33,7 @@ class FundingRound(Base, TimestampMixin):
     @hybrid_property
     def company_name(self) -> str | None:
         return self.company.name if self.company else None
+
+    @hybrid_property
+    def company_sector(self) -> str | None:
+        return self.company.sector if self.company else None
