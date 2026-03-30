@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import JSONResponse
 
+from app.config import settings
+from app.limiter import limiter
 from app.schemas.raw_source import RawSourceResponse
 from app.services.crud import create_raw_source, get_raw_source_by_url
 from app.services.db import get_session
@@ -21,8 +23,22 @@ class IngestBatchRequest(BaseModel):
     feed_url: str
 
 
+def _ingest_limit() -> str:
+    return settings.rate_limit_ingest
+
+
+def _process_limit() -> str:
+    return settings.rate_limit_process
+
+
+def _batch_limit() -> str:
+    return settings.rate_limit_batch
+
+
 @router.post("", response_model=RawSourceResponse, status_code=202)
+@limiter.limit(_ingest_limit)
 async def ingest_source(
+    request: Request,
     body: IngestRequest,
     session: AsyncSession = Depends(get_session),
 ):
@@ -44,7 +60,9 @@ async def ingest_source(
 
 
 @router.post("/process")
+@limiter.limit(_process_limit)
 async def process_source(
+    request: Request,
     body: IngestRequest,
     session: AsyncSession = Depends(get_session),
 ):
@@ -54,7 +72,9 @@ async def process_source(
 
 
 @router.post("/batch")
+@limiter.limit(_batch_limit)
 async def batch_ingest(
+    request: Request,
     body: IngestBatchRequest,
     session: AsyncSession = Depends(get_session),
 ):
